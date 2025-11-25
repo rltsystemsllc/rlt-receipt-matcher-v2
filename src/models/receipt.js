@@ -76,7 +76,7 @@ function createReceipt(data = {}) {
 
     // Category/Account assignment
     category: {
-      name: data.categoryName || 'Materials & Supplies',
+      name: data.categoryName || 'Job Supplies',
       qboAccountId: data.qboAccountId || null,
       isBillable: data.isBillable !== false, // Default true
       isTaxable: data.isTaxable !== false    // Default true

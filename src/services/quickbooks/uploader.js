@@ -22,11 +22,13 @@ class QuickBooksUploader {
         receipt.vendor.qboVendorId = vendor.Id;
       }
 
-      // Find customer/project if job specified
+      // Find or create customer/project if job specified
+      // If job name doesn't exist in QuickBooks, a new project will be auto-created
       if (receipt.job.name) {
-        const customer = await matcher.findCustomer(receipt.job.name);
+        const customer = await matcher.findOrCreateCustomer(receipt.job.name);
         if (customer) {
           receipt.job.qboCustomerId = customer.Id;
+          addProcessingNote(receipt, `Linked to project: ${customer.DisplayName} (ID: ${customer.Id})`);
         }
       }
 

@@ -136,9 +136,10 @@ class TransactionMatcher {
   }
 
   /**
-   * Find customer/project in QuickBooks
+   * Find or create customer/project in QuickBooks
+   * If job name doesn't exist, automatically creates a new Project
    */
-  async findCustomer(jobName) {
+  async findOrCreateCustomer(jobName) {
     if (!jobName) return null;
 
     // Check cache first
@@ -159,18 +160,43 @@ class TransactionMatcher {
         return customer;
       }
 
-      return null;
+      // Customer/Project not found - create a new one
+      logger.info(`Job "${jobName}" not found in QuickBooks, creating new project...`);
+
+      const newCustomer = await qboClient.makeApiCall('POST', '/customer', {
+        DisplayName: jobName,
+        CompanyName: jobName,
+        Job: true,  // Mark as a job/project
+        BillWithParent: false,
+        Notes: `Auto-created by RLT Receipt Matcher on ${new Date().toISOString()}`
+      });
+
+      this.customerCache.set(jobName, newCustomer.Customer);
+      logger.qbo('created new project/customer', { 
+        name: jobName, 
+        id: newCustomer.Customer.Id 
+      });
+
+      return newCustomer.Customer;
     } catch (error) {
-      logger.error('Customer lookup failed', { jobName, error: error.message });
+      logger.error('Customer lookup/create failed', { jobName, error: error.message });
       return null;
     }
+  }
+
+  /**
+   * Find customer/project in QuickBooks (without creating)
+   * @deprecated Use findOrCreateCustomer instead
+   */
+  async findCustomer(jobName) {
+    return this.findOrCreateCustomer(jobName);
   }
 
   /**
    * Find expense account by name or category
    */
   async findAccount(categoryName) {
-    const searchName = categoryName || 'Materials & Supplies';
+    const searchName = categoryName || 'Job Supplies';
 
     // Check cache first
     if (this.accountCache.has(searchName)) {
@@ -196,11 +222,14 @@ class TransactionMatcher {
 
       const allAccounts = broadResponse.QueryResponse?.Account || [];
 
-      // Find best match
+      // Find best match - look for job supplies, materials, supplies, or cost of goods
       for (const account of allAccounts) {
-        if (account.Name.toLowerCase().includes('material') ||
-            account.Name.toLowerCase().includes('supplies') ||
-            account.Name.toLowerCase().includes('cost of goods')) {
+        const name = account.Name.toLowerCase();
+        if (name.includes('job supplies') ||
+            name.includes('job') ||
+            name.includes('material') ||
+            name.includes('supplies') ||
+            name.includes('cost of goods')) {
           this.accountCache.set(searchName, account);
           return account;
         }

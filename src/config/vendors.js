@@ -14,7 +14,7 @@ const vendors = {
     ],
     receiptType: 'pdf', // Usually PDF attachment
     qboVendorName: 'The Home Depot',
-    category: 'Materials & Supplies',
+    category: 'Job Supplies',
     // Patterns to extract data from Home Depot receipts
     extractors: {
       total: /(?:order\s*total|grand\s*total|total)[:\s]*\$?([\d,]+\.?\d*)/i,
@@ -34,7 +34,7 @@ const vendors = {
     ],
     receiptType: 'html', // Usually HTML email body
     qboVendorName: "Lowe's",
-    category: 'Materials & Supplies',
+    category: 'Job Supplies',
     extractors: {
       total: /(?:order\s*total|total)[:\s]*\$?([\d,]+\.?\d*)/i,
       date: /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
@@ -53,7 +53,7 @@ const vendors = {
     ],
     receiptType: 'html',
     qboVendorName: 'Amazon.com',
-    category: 'Materials & Supplies',
+    category: 'Job Supplies',
     extractors: {
       total: /(?:order\s*total|grand\s*total)[:\s]*\$?([\d,]+\.?\d*)/i,
       date: /(?:order\s*placed|ordered\s*on)[:\s]*(\w+\s+\d{1,2},?\s*\d{4})/i,
@@ -72,7 +72,7 @@ const vendors = {
     ],
     receiptType: 'pdf',
     qboVendorName: 'CED',
-    category: 'Electrical Supplies',
+    category: 'Job Supplies',
     extractors: {
       total: /(?:total|amount\s*due)[:\s]*\$?([\d,]+\.?\d*)/i,
       date: /(?:invoice\s*date|date)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
@@ -89,7 +89,7 @@ const vendors = {
     ],
     receiptType: 'html',
     qboVendorName: 'Ace Hardware',
-    category: 'Materials & Supplies',
+    category: 'Job Supplies',
     extractors: {
       total: /(?:total)[:\s]*\$?([\d,]+\.?\d*)/i,
       date: /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i
@@ -106,7 +106,7 @@ const vendors = {
     ],
     receiptType: 'pdf',
     qboVendorName: 'Alpha Supply',
-    category: 'Electrical Supplies',
+    category: 'Job Supplies',
     extractors: {
       total: /(?:total|amount\s*due|invoice\s*total)[:\s]*\$?([\d,]+\.?\d*)/i,
       date: /(?:invoice\s*date|date)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
@@ -127,7 +127,7 @@ const vendors = {
     ],
     receiptType: 'pdf', // Adjust based on how receipts typically come
     qboVendorName: 'Read Lighting',
-    category: 'Electrical Supplies',
+    category: 'Job Supplies',
     extractors: {
       total: /(?:total|amount\s*due|grand\s*total)[:\s]*\$?([\d,]+\.?\d*)/i,
       date: /(?:date|invoice\s*date)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
