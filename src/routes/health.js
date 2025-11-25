@@ -29,14 +29,14 @@ router.get('/', async (req, res) => {
     }
   };
 
-  // Determine overall status
+  // Determine overall status - services may not be connected yet but app is healthy
   const allServicesOk = health.services.gmail.connected && 
                         health.services.quickbooks.connected;
 
   health.status = allServicesOk ? 'ok' : 'degraded';
 
-  const statusCode = health.status === 'ok' ? 200 : 503;
-  res.status(statusCode).json(health);
+  // Always return 200 for healthcheck - the app is running, even if services aren't authenticated yet
+  res.status(200).json(health);
 });
 
 /**
