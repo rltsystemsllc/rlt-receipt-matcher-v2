@@ -137,18 +137,21 @@ class QuickBooksUploader {
    * Update an existing transaction with receipt details
    */
   async updateTransaction(receipt, transaction) {
-    // Build updated line items with billable/customer info
+    // Build updated line items with billable/taxable/customer info
     const updatedLines = transaction.Line.map((line, index) => {
       const updatedLine = { ...line };
 
-      // Add customer reference for billable
-      if (receipt.category.isBillable && receipt.job.qboCustomerId) {
-        if (line.AccountBasedExpenseLineDetail) {
-          updatedLine.AccountBasedExpenseLineDetail = {
-            ...line.AccountBasedExpenseLineDetail,
-            CustomerRef: { value: receipt.job.qboCustomerId },
-            BillableStatus: 'Billable'
-          };
+      // Add customer reference for billable and set taxable status
+      if (line.AccountBasedExpenseLineDetail) {
+        updatedLine.AccountBasedExpenseLineDetail = {
+          ...line.AccountBasedExpenseLineDetail,
+          BillableStatus: receipt.category.isBillable ? 'Billable' : 'NotBillable',
+          TaxCodeRef: receipt.category.isTaxable ? { value: 'TAX' } : { value: 'NON' }
+        };
+        
+        // Add customer reference if job is specified
+        if (receipt.job.qboCustomerId) {
+          updatedLine.AccountBasedExpenseLineDetail.CustomerRef = { value: receipt.job.qboCustomerId };
         }
       }
 
@@ -193,6 +196,7 @@ class QuickBooksUploader {
             value: receipt.category.qboAccountId
           } : undefined,
           BillableStatus: receipt.category.isBillable ? 'Billable' : 'NotBillable',
+          TaxCodeRef: receipt.category.isTaxable ? { value: 'TAX' } : { value: 'NON' },
           CustomerRef: receipt.job.qboCustomerId ? {
             value: receipt.job.qboCustomerId
           } : undefined
@@ -210,6 +214,7 @@ class QuickBooksUploader {
           value: receipt.category.qboAccountId
         } : undefined,
         BillableStatus: receipt.category.isBillable ? 'Billable' : 'NotBillable',
+        TaxCodeRef: receipt.category.isTaxable ? { value: 'TAX' } : { value: 'NON' },
         CustomerRef: receipt.job.qboCustomerId ? {
           value: receipt.job.qboCustomerId
         } : undefined
@@ -231,6 +236,7 @@ class QuickBooksUploader {
             value: receipt.category.qboAccountId
           } : undefined,
           BillableStatus: receipt.category.isBillable ? 'Billable' : 'NotBillable',
+          TaxCodeRef: receipt.category.isTaxable ? { value: 'TAX' } : { value: 'NON' },
           CustomerRef: receipt.job.qboCustomerId ? {
             value: receipt.job.qboCustomerId
           } : undefined
@@ -247,6 +253,7 @@ class QuickBooksUploader {
           value: receipt.category.qboAccountId
         } : undefined,
         BillableStatus: receipt.category.isBillable ? 'Billable' : 'NotBillable',
+        TaxCodeRef: receipt.category.isTaxable ? { value: 'TAX' } : { value: 'NON' },
         CustomerRef: receipt.job.qboCustomerId ? {
           value: receipt.job.qboCustomerId
         } : undefined
