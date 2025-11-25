@@ -1,0 +1,45 @@
+{
+  "name": "rlt-receipt-matcher",
+  "version": "1.0.0",
+  "description": "Automated receipt matching bot for QuickBooks Online - fetches from Gmail, parses receipts, and syncs to QBO",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "auth:gmail": "node src/scripts/gmail-auth.js",
+    "auth:quickbooks": "node src/scripts/quickbooks-auth.js",
+    "test:gmail": "node src/scripts/test-gmail.js",
+    "test:parse": "node src/scripts/test-parser.js",
+    "test:qbo": "node src/scripts/test-quickbooks.js"
+  },
+  "keywords": [
+    "quickbooks",
+    "receipt",
+    "gmail",
+    "automation",
+    "bookkeeping"
+  ],
+  "author": "Read Lighting",
+  "license": "PRIVATE",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "googleapis": "^128.0.0",
+    "intuit-oauth": "^4.0.0",
+    "node-cron": "^3.0.3",
+    "pdf-parse": "^1.1.1",
+    "tesseract.js": "^5.0.4",
+    "winston": "^3.11.0",
+    "uuid": "^9.0.1",
+    "dayjs": "^1.11.10"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
+
+
