@@ -79,8 +79,9 @@ async function start() {
     logger.info('Copy env.example to .env and fill in your credentials.');
   }
 
-  // Start server
-  app.listen(config.port, () => {
+  // Start server (bind to 0.0.0.0 for Railway/cloud deployment)
+  const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+  app.listen(config.port, host, () => {
     logger.info('='.repeat(60));
     logger.info('🚀 RLT AUTOMATION SYSTEM Started');
     logger.info('='.repeat(60));
