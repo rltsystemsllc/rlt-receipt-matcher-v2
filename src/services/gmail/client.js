@@ -130,9 +130,19 @@ class GmailClient {
   }
 
   /**
-   * Load tokens from file
+   * Load tokens from env var (Railway) or file (local)
    */
   async loadTokens() {
+    // First check for environment variable (for Railway deployment)
+    if (process.env.GMAIL_TOKEN_JSON) {
+      try {
+        return JSON.parse(process.env.GMAIL_TOKEN_JSON);
+      } catch {
+        logger.warn('Failed to parse GMAIL_TOKEN_JSON env var');
+      }
+    }
+    
+    // Fall back to file (local development)
     try {
       const data = await fs.readFile(config.gmail.tokenPath, 'utf8');
       return JSON.parse(data);
@@ -178,5 +188,7 @@ class GmailClient {
 const gmailClient = new GmailClient();
 
 module.exports = gmailClient;
+
+
 
 

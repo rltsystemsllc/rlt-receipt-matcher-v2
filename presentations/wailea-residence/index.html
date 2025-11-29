@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wailea Residence | Read Lighting Design</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sand: #E8DFD0;
+            --palm: #2C4A3E;
+            --ocean: #1A3A4A;
+            --coral: #C4927A;
+            --brass: #C9A962;
+            --lava: #2D2926;
+            --white: #FDFCFA;
+            --warm-glow: #FFE4B5;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+            scroll-snap-type: y mandatory;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: var(--lava);
+            color: var(--white);
+            overflow-x: hidden;
+        }
+
+        /* Slide Base */
+        .slide {
+            min-height: 100vh;
+            scroll-snap-align: start;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 60px;
+            overflow: hidden;
+        }
+
+        /* Typography */
+        h1, h2, h3 {
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 300;
+            letter-spacing: 0.05em;
+        }
+
+        h1 {
+            font-size: clamp(3rem, 8vw, 6rem);
+            line-height: 1.1;
+        }
+
+        h2 {
+            font-size: clamp(2rem, 5vw, 4rem);
+            margin-bottom: 1rem;
+        }
+
+        h3 {
+            font-size: clamp(1.5rem, 3vw, 2.5rem);
+            color: var(--brass);
+        }
+
+        p {
+            font-weight: 300;
+            line-height: 1.8;
+            max-width: 600px;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            right: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        nav a {
+            width: 12px;
+            height: 12px;
+            border: 1px solid var(--brass);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        nav a:hover,
+        nav a.active {
+            background: var(--brass);
+            transform: scale(1.2);
+        }
+
+        nav a::after {
+            content: attr(data-label);
+            position: absolute;
+            right: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            white-space: nowrap;
+            font-size: 11px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            opacity: 0;
+            transition: opacity 0.3s;
+            color: var(--brass);
+        }
+
+        nav a:hover::after {
+            opacity: 1;
+        }
+
+        /* Logo */
+        .logo {
+            position: fixed;
+            top: 40px;
+            left: 40px;
+            z-index: 1000;
+        }
+
+        .logo svg {
+            width: 60px;
+            height: auto;
+        }
+
+        /* Slide 1: Hero */
+        .slide-hero {
+            background: linear-gradient(135deg, var(--ocean) 0%, var(--lava) 100%);
+        }
+
+        .slide-hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0L30 60M0 30L60 30' stroke='%23C9A962' stroke-opacity='0.05' fill='none'/%3E%3C/svg%3E");
+            pointer-events: none;
+        }
+
+        .hero-content {
+            text-align: center;
+            z-index: 1;
+        }
+
+        .hero-location {
+            font-size: 0.9rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: var(--brass);
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: fadeUp 1s ease 0.3s forwards;
+        }
+
+        .hero-title {
+            opacity: 0;
+            animation: fadeUp 1s ease 0.5s forwards;
+        }
+
+        .hero-title span {
+            display: block;
+            font-style: italic;
+            font-size: 0.5em;
+            color: var(--coral);
+            margin-top: 0.5rem;
+        }
+
+        .hero-divider {
+            width: 120px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--brass), transparent);
+            margin: 3rem auto;
+            opacity: 0;
+            animation: fadeUp 1s ease 0.7s forwards;
+        }
+
+        .hero-subtitle {
+            font-size: 1.1rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            opacity: 0;
+            animation: fadeUp 1s ease 0.9s forwards;
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            animation: fadeUp 1s ease 1.2s forwards;
+        }
+
+        .scroll-indicator span {
+            font-size: 10px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+
+        .scroll-indicator .arrow {
+            width: 1px;
+            height: 40px;
+            background: var(--brass);
+            position: relative;
+            animation: scrollPulse 2s infinite;
+        }
+
+        @keyframes scrollPulse {
+            0%, 100% { transform: scaleY(1); opacity: 1; }
+            50% { transform: scaleY(0.5); opacity: 0.5; }
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Slide 2: Process */
+        .slide-process {
+            background: var(--sand);
+            color: var(--lava);
+        }
+
+        .process-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            max-width: 1200px;
+            margin-top: 4rem;
+        }
+
+        .process-step {
+            text-align: center;
+            padding: 2rem 1rem;
+            position: relative;
+        }
+
+        .process-step::after {
+            content: '';
+            position: absolute;
+            top: 50px;
+            right: -10px;
+            width: 20px;
+            height: 1px;
+            background: var(--brass);
+        }
+
+        .process-step:last-child::after {
+            display: none;
+        }
+
+        .step-number {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 3rem;
+            color: var(--brass);
+            line-height: 1;
+        }
+
+        .step-icon {
+            width: 80px;
+            height: 80px;
+            margin: 1.5rem auto;
+            border: 1px solid var(--palm);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .step-icon svg {
+            width: 36px;
+            height: 36px;
+            stroke: var(--palm);
+        }
+
+        .step-title {
+            font-size: 0.75rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .step-desc {
+            font-size: 0.7rem;
+            color: var(--palm);
+            line-height: 1.6;
+        }
+
+        /* Slide 3: Style */
+        .slide-style {
+            background: linear-gradient(180deg, var(--palm) 0%, var(--ocean) 100%);
+        }
+
+        .style-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            max-width: 1200px;
+            align-items: center;
+        }
+
+        .style-image {
+            aspect-ratio: 4/5;
+            background: linear-gradient(145deg, var(--coral) 0%, var(--brass) 100%);
+            border-radius: 200px 200px 20px 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .style-image::before {
+            content: '';
+            position: absolute;
+            inset: 20px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 180px 180px 10px 10px;
+        }
+
+        .style-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .style-text h2 {
+            color: var(--warm-glow);
+        }
+
+        .style-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 2rem 0;
+        }
+
+        .style-tag {
+            padding: 8px 20px;
+            border: 1px solid var(--brass);
+            border-radius: 30px;
+            font-size: 0.75rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        /* Slide 4: Finishes */
+        .slide-finishes {
+            background: var(--white);
+            color: var(--lava);
+        }
+
+        .finishes-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 60px;
+            max-width: 900px;
+            margin-top: 3rem;
+        }
+
+        .finish-card {
+            text-align: center;
+        }
+
+        .finish-swatch {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            margin: 0 auto 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .finish-swatch.brass {
+            background: linear-gradient(135deg, #D4AF37 0%, #C9A962 30%, #E8D5A3 50%, #C9A962 70%, #AA8B2D 100%);
+            box-shadow: inset 0 0 60px rgba(0,0,0,0.2), 0 20px 40px rgba(201, 169, 98, 0.3);
+        }
+
+        .finish-swatch.nickel {
+            background: linear-gradient(135deg, #C0C0C0 0%, #A8A8A8 30%, #E8E8E8 50%, #A8A8A8 70%, #808080 100%);
+            box-shadow: inset 0 0 60px rgba(0,0,0,0.15), 0 20px 40px rgba(128, 128, 128, 0.3);
+        }
+
+        .finish-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .finish-desc {
+            font-size: 0.8rem;
+            color: var(--palm);
+        }
+
+        /* Slide 5: Warm Dim */
+        .slide-warmdim {
+            background: var(--lava);
+            position: relative;
+        }
+
+        .warmdim-visual {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            margin-top: 3rem;
+        }
+
+        .temp-bar {
+            display: flex;
+            gap: 4px;
+            align-items: flex-end;
+        }
+
+        .temp-segment {
+            width: 60px;
+            border-radius: 4px 4px 0 0;
+            transition: all 0.3s;
+        }
+
+        .temp-segment:nth-child(1) { height: 120px; background: #FF8C00; }
+        .temp-segment:nth-child(2) { height: 140px; background: #FFA500; }
+        .temp-segment:nth-child(3) { height: 160px; background: #FFB347; }
+        .temp-segment:nth-child(4) { height: 180px; background: #FFCC66; }
+        .temp-segment:nth-child(5) { height: 200px; background: #FFE4B5; }
+        .temp-segment:nth-child(6) { height: 180px; background: #FFF8DC; }
+
+        .temp-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 400px;
+            margin-top: 1rem;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+        }
+
+        .warmdim-info {
+            max-width: 500px;
+        }
+
+        .warmdim-info h2 {
+            color: var(--warm-glow);
+        }
+
+        .warmdim-feature {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+
+        .warmdim-feature svg {
+            width: 32px;
+            height: 32px;
+            stroke: var(--brass);
+            flex-shrink: 0;
+        }
+
+        /* Category Slides */
+        .slide-category {
+            background: var(--sand);
+            color: var(--lava);
+        }
+
+        .category-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .category-tag {
+            font-size: 0.7rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: var(--coral);
+            margin-bottom: 1rem;
+        }
+
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            max-width: 1100px;
+        }
+
+        .product-card {
+            background: var(--white);
+            border-radius: 16px;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .product-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .product-image {
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-image svg {
+            width: 60%;
+            height: 60%;
+            stroke: var(--palm);
+            opacity: 0.6;
+        }
+
+        .product-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: var(--brass);
+            color: var(--white);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .product-info {
+            padding: 1.5rem;
+        }
+
+        .product-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .product-brand {
+            font-size: 0.7rem;
+            color: var(--coral);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .product-specs {
+            display: flex;
+            gap: 16px;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+        }
+
+        .product-spec {
+            font-size: 0.7rem;
+            color: var(--palm);
+        }
+
+        .product-spec strong {
+            display: block;
+            font-size: 0.6rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        /* Alternate category style */
+        .slide-category.alt {
+            background: var(--palm);
+            color: var(--white);
+        }
+
+        .slide-category.alt .category-tag {
+            color: var(--brass);
+        }
+
+        .slide-category.alt .product-card {
+            background: rgba(255,255,255,0.95);
+            color: var(--lava);
+        }
+
+        /* Summary Slide */
+        .slide-summary {
+            background: linear-gradient(135deg, var(--ocean) 0%, var(--palm) 100%);
+        }
+
+        .summary-content {
+            text-align: center;
+            max-width: 800px;
+        }
+
+        .summary-items {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            margin: 3rem 0;
+            flex-wrap: wrap;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-number {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 4rem;
+            color: var(--brass);
+            line-height: 1;
+        }
+
+        .summary-label {
+            font-size: 0.7rem;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-top: 0.5rem;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 18px 48px;
+            background: var(--brass);
+            color: var(--lava);
+            text-decoration: none;
+            font-size: 0.8rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            border-radius: 4px;
+            margin-top: 2rem;
+            transition: all 0.3s;
+        }
+
+        .cta-button:hover {
+            background: var(--warm-glow);
+            transform: translateY(-2px);
+        }
+
+        /* Contact Slide */
+        .slide-contact {
+            background: var(--lava);
+        }
+
+        .contact-content {
+            text-align: center;
+        }
+
+        .contact-logo {
+            margin-bottom: 3rem;
+        }
+
+        .contact-logo svg {
+            width: 120px;
+            height: auto;
+        }
+
+        .contact-info {
+            display: flex;
+            gap: 60px;
+            margin-top: 3rem;
+        }
+
+        .contact-item {
+            text-align: center;
+        }
+
+        .contact-item svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--brass);
+            margin-bottom: 1rem;
+        }
+
+        .contact-item a {
+            color: var(--white);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .process-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .process-step:nth-child(3)::after {
+                display: none;
+            }
+            .style-content {
+                grid-template-columns: 1fr;
+                gap: 40px;
+            }
+            .product-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 40px 24px;
+            }
+            nav {
+                right: 20px;
+            }
+            .process-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .finishes-grid {
+                grid-template-columns: 1fr;
+            }
+            .product-grid {
+                grid-template-columns: 1fr;
+                max-width: 400px;
+            }
+            .warmdim-visual {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Logo -->
+    <div class="logo">
+        <svg viewBox="0 0 60 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M30 5C25 15 15 20 15 35C15 50 22 60 30 65C38 60 45 50 45 35C45 20 35 15 30 5Z" stroke="#C9A962" stroke-width="1.5" fill="none"/>
+            <path d="M30 20V50" stroke="#C9A962" stroke-width="1"/>
+            <path d="M22 30L30 38L38 30" stroke="#C9A962" stroke-width="1"/>
+        </svg>
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+        <a href="#hero" data-label="Welcome" class="active"></a>
+        <a href="#process" data-label="Process"></a>
+        <a href="#style" data-label="Your Style"></a>
+        <a href="#finishes" data-label="Finishes"></a>
+        <a href="#warmdim" data-label="Warm Dim"></a>
+        <a href="#recessed" data-label="Recessed"></a>
+        <a href="#pendants" data-label="Pendants"></a>
+        <a href="#chandeliers" data-label="Chandeliers"></a>
+        <a href="#outdoor" data-label="Outdoor"></a>
+        <a href="#summary" data-label="Summary"></a>
+        <a href="#contact" data-label="Contact"></a>
+    </nav>
+
+    <!-- Slide 1: Hero -->
+    <section id="hero" class="slide slide-hero">
+        <div class="hero-content">
+            <p class="hero-location">Wailea, Maui · New Construction</p>
+            <h1 class="hero-title">
+                Signature Lighting Package
+                <span>Updated Hawaiiana Collection</span>
+            </h1>
+            <div class="hero-divider"></div>
+            <p class="hero-subtitle">Curated for Your Island Home</p>
+        </div>
+        <div class="scroll-indicator">
+            <span>Scroll</span>
+            <div class="arrow"></div>
+        </div>
+    </section>
+
+    <!-- Slide 2: Process -->
+    <section id="process" class="slide slide-process">
+        <h2>Our Process</h2>
+        <p style="text-align: center; color: var(--palm); margin-top: 1rem;">Five steps to your perfectly illuminated home</p>
+        
+        <div class="process-grid">
+            <div class="process-step">
+                <div class="step-number">01</div>
+                <div class="step-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M3 9h18M9 21V9"/>
+                    </svg>
+                </div>
+                <div class="step-title">Electrical Layout</div>
+                <div class="step-desc">Layout created for your approval</div>
+            </div>
+            
+            <div class="process-step">
+                <div class="step-number">02</div>
+                <div class="step-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="9"/>
+                        <path d="M12 7v5l3 3"/>
+                    </svg>
+                </div>
+                <div class="step-title">Budget Alignment</div>
+                <div class="step-desc">Confirmation of total budget for fixture selection</div>
+            </div>
+            
+            <div class="process-step">
+                <div class="step-number">03</div>
+                <div class="step-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                        <path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5L12 3Z"/>
+                        <path d="M12 12L20 7.5M12 12V21M12 12L4 7.5"/>
+                    </svg>
+                </div>
+                <div class="step-title">Design Presentation</div>
+                <div class="step-desc">Fixtures proposed for your review</div>
+            </div>
+            
+            <div class="process-step">
+                <div class="step-number">04</div>
+                <div class="step-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                        <path d="M9 12l2 2 4-4"/>
+                        <circle cx="12" cy="12" r="9"/>
+                    </svg>
+                </div>
+                <div class="step-title">Approval & Payment</div>
+                <div class="step-desc">Proposal finalized & payment made</div>
+            </div>
+            
+            <div class="process-step">
+                <div class="step-number">05</div>
+                <div class="step-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                        <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                        <path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/>
+                    </svg>
+                </div>
+                <div class="step-title">Delivery Phase</div>
+                <div class="step-desc">Ordering, staging & labeling of approved package</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 3: Style -->
+    <section id="style" class="slide slide-style">
+        <div class="style-content">
+            <div class="style-image">
+                <!-- Placeholder for style mood image -->
+            </div>
+            <div class="style-text">
+                <h3>Your Vision</h3>
+                <h2>Updated Hawaiiana</h2>
+                <p>A refined take on island living—honoring traditional Hawaiian design elements while embracing contemporary sophistication. Natural materials, organic forms, and warm metallics create spaces that feel both rooted and elevated.</p>
+                <div class="style-tags">
+                    <span class="style-tag">Natural Materials</span>
+                    <span class="style-tag">Organic Forms</span>
+                    <span class="style-tag">Warm Tones</span>
+                    <span class="style-tag">Island Inspired</span>
+                    <span class="style-tag">Contemporary</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 4: Finishes -->
+    <section id="finishes" class="slide slide-finishes">
+        <h3 style="color: var(--coral);">Selected Finishes</h3>
+        <h2 style="color: var(--lava);">Your Metal Palette</h2>
+        
+        <div class="finishes-grid">
+            <div class="finish-card">
+                <div class="finish-swatch brass"></div>
+                <div class="finish-name">Brass</div>
+                <div class="finish-desc">Warm golden tones that complement natural wood and tropical foliage</div>
+            </div>
+            
+            <div class="finish-card">
+                <div class="finish-swatch nickel"></div>
+                <div class="finish-name">Brushed Nickel</div>
+                <div class="finish-desc">Cool sophistication with a soft, muted sheen</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 5: Warm Dim -->
+    <section id="warmdim" class="slide slide-warmdim">
+        <div class="warmdim-visual">
+            <div>
+                <div class="temp-bar">
+                    <div class="temp-segment"></div>
+                    <div class="temp-segment"></div>
+                    <div class="temp-segment"></div>
+                    <div class="temp-segment"></div>
+                    <div class="temp-segment"></div>
+                    <div class="temp-segment"></div>
+                </div>
+                <div class="temp-labels">
+                    <span>1800K Candlelight</span>
+                    <span>2700K Warm</span>
+                </div>
+            </div>
+            
+            <div class="warmdim-info">
+                <h3>Technology</h3>
+                <h2>Warm Dim</h2>
+                <p>As you dim the lights, the color temperature shifts from a bright, warm white to a soft, amber glow—mimicking the natural warmth of candlelight and sunset.</p>
+                
+                <div class="warmdim-feature">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="5"/>
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                    </svg>
+                    <div>
+                        <strong style="color: var(--brass);">Natural Circadian Support</strong>
+                        <p style="font-size: 0.85rem; margin-top: 4px;">Warmer light in the evening promotes relaxation and better sleep</p>
+                    </div>
+                </div>
+                
+                <div class="warmdim-feature">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                        <path d="M17 18a5 5 0 00-10 0"/>
+                        <path d="M12 9V2M4.22 10.22l1.42 1.42M1 18h2M21 18h2M18.36 11.64l1.42-1.42"/>
+                    </svg>
+                    <div>
+                        <strong style="color: var(--brass);">Perfect for Island Living</strong>
+                        <p style="font-size: 0.85rem; margin-top: 4px;">Transitions seamlessly from day to evening entertaining</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 6: Recessed Lighting -->
+    <section id="recessed" class="slide slide-category">
+        <div class="category-header">
+            <div class="category-tag">Foundation Lighting</div>
+            <h2>Recessed Options</h2>
+        </div>
+        
+        <div class="product-grid">
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <circle cx="12" cy="12" r="8"/>
+                        <circle cx="12" cy="12" r="4"/>
+                    </svg>
+                    <span class="product-badge">Warm Dim</span>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Element 4" Round</div>
+                    <div class="product-brand">Tech Lighting</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Output</strong>
+                            1000 lm
+                        </div>
+                        <div class="product-spec">
+                            <strong>Color</strong>
+                            2700K-1800K
+                        </div>
+                        <div class="product-spec">
+                            <strong>Finish</strong>
+                            Brass
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <rect x="6" y="6" width="12" height="12" rx="2"/>
+                        <rect x="9" y="9" width="6" height="6"/>
+                    </svg>
+                    <span class="product-badge">Warm Dim</span>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Ardito 3.5" Square</div>
+                    <div class="product-brand">Contrast Lighting</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Output</strong>
+                            800 lm
+                        </div>
+                        <div class="product-spec">
+                            <strong>Color</strong>
+                            2700K-1800K
+                        </div>
+                        <div class="product-spec">
+                            <strong>Finish</strong>
+                            Brushed Nickel
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <circle cx="12" cy="12" r="8"/>
+                        <circle cx="12" cy="12" r="5"/>
+                        <circle cx="12" cy="12" r="2"/>
+                    </svg>
+                    <span class="product-badge">Adjustable</span>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Volta 4.5" Gimbal</div>
+                    <div class="product-brand">WAC Lighting</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Output</strong>
+                            1200 lm
+                        </div>
+                        <div class="product-spec">
+                            <strong>Color</strong>
+                            2700K
+                        </div>
+                        <div class="product-spec">
+                            <strong>Finish</strong>
+                            Brass
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 7: Pendants -->
+    <section id="pendants" class="slide slide-category alt">
+        <div class="category-header">
+            <div class="category-tag">Statement Pieces</div>
+            <h2>Pendant Lighting</h2>
+        </div>
+        
+        <div class="product-grid">
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <path d="M12 2v4"/>
+                        <path d="M6 10c0-3.31 2.69-6 6-6s6 2.69 6 6c0 4-3 8-6 10-3-2-6-6-6-10z"/>
+                    </svg>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Kona Woven Pendant</div>
+                    <div class="product-brand">Made Goods</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Size</strong>
+                            24" Dia
+                        </div>
+                        <div class="product-spec">
+                            <strong>Material</strong>
+                            Rattan + Brass
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <path d="M12 2v3"/>
+                        <ellipse cx="12" cy="14" rx="8" ry="6"/>
+                        <ellipse cx="12" cy="14" rx="4" ry="3"/>
+                    </svg>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Hanalei Dome</div>
+                    <div class="product-brand">Visual Comfort</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Size</strong>
+                            18" Dia
+                        </div>
+                        <div class="product-spec">
+                            <strong>Finish</strong>
+                            Antique Brass
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <path d="M12 2v2"/>
+                        <path d="M5 8h14l-2 12H7L5 8z"/>
+                        <path d="M8 8V6a4 4 0 018 0v2"/>
+                    </svg>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Lanai Lantern</div>
+                    <div class="product-brand">Arteriors</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Size</strong>
+                            14" × 28"
+                        </div>
+                        <div class="product-spec">
+                            <strong>Finish</strong>
+                            Brushed Nickel
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 8: Chandeliers -->
+    <section id="chandeliers" class="slide slide-category">
+        <div class="category-header">
+            <div class="category-tag">Grand Statements</div>
+            <h2>Chandeliers</h2>
+        </div>
+        
+        <div class="product-grid">
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <circle cx="12" cy="12" r="8"/>
+                        <circle cx="12" cy="6" r="2"/>
+                        <circle cx="6" cy="14" r="2"/>
+                        <circle cx="18" cy="14" r="2"/>
+                        <circle cx="9" cy="18" r="2"/>
+                        <circle cx="15" cy="18" r="2"/>
+                    </svg>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Pacific Ring</div>
+                    <div class="product-brand">Roll & Hill</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Size</strong>
+                            48" Dia
+                        </div>
+                        <div class="product-spec">
+                            <strong>Finish</strong>
+                            Brass
+                        </div>
+                        <div class="product-spec">
+                            <strong>Lights</strong>
+                            12
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <path d="M12 2v4"/>
+                        <path d="M4 10h16"/>
+                        <path d="M6 10v8M10 10v8M14 10v8M18 10v8"/>
+                        <path d="M4 18h16"/>
+                    </svg>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Mauna Linear</div>
+                    <div class="product-brand">Hammerton Studio</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Size</strong>
+                            60" × 12"
+                        </div>
+                        <div class="product-spec">
+                            <strong>Finish</strong>
+                            Brushed Nickel
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <path d="M12 2v2"/>
+                        <circle cx="12" cy="12" r="6"/>
+                        <path d="M12 6v12M6 12h12"/>
+                        <circle cx="12" cy="6" r="1"/>
+                        <circle cx="12" cy="18" r="1"/>
+                        <circle cx="6" cy="12" r="1"/>
+                        <circle cx="18" cy="12" r="1"/>
+                    </svg>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Aloha Sputnik</div>
+                    <div class="product-brand">Jonathan Adler</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Size</strong>
+                            36" Dia
+                        </div>
+                        <div class="product-spec">
+                            <strong>Finish</strong>
+                            Polished Brass
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 9: Outdoor -->
+    <section id="outdoor" class="slide slide-category alt">
+        <div class="category-header">
+            <div class="category-tag">Indoor-Outdoor Living</div>
+            <h2>Exterior Lighting</h2>
+        </div>
+        
+        <div class="product-grid">
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <rect x="7" y="4" width="10" height="16" rx="1"/>
+                        <path d="M10 8h4M10 12h4"/>
+                    </svg>
+                    <span class="product-badge">Marine Grade</span>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Coastal Wall Sconce</div>
+                    <div class="product-brand">Hinkley</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Size</strong>
+                            6" × 18"
+                        </div>
+                        <div class="product-spec">
+                            <strong>Finish</strong>
+                            Heritage Brass
+                        </div>
+                        <div class="product-spec">
+                            <strong>Rating</strong>
+                            IP65
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <path d="M12 2v4"/>
+                        <path d="M6 10c0-3.31 2.69-6 6-6s6 2.69 6 6v8a2 2 0 01-2 2H8a2 2 0 01-2-2v-8z"/>
+                    </svg>
+                    <span class="product-badge">Marine Grade</span>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Lanai Pendant</div>
+                    <div class="product-brand">Troy Lighting</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Size</strong>
+                            12" Dia
+                        </div>
+                        <div class="product-spec">
+                            <strong>Finish</strong>
+                            Textured Nickel
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="product-card">
+                <div class="product-image">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1">
+                        <path d="M3 21h18"/>
+                        <path d="M12 3v18"/>
+                        <circle cx="12" cy="8" r="3"/>
+                    </svg>
+                </div>
+                <div class="product-info">
+                    <div class="product-name">Path Light</div>
+                    <div class="product-brand">WAC Landscape</div>
+                    <div class="product-specs">
+                        <div class="product-spec">
+                            <strong>Height</strong>
+                            22"
+                        </div>
+                        <div class="product-spec">
+                            <strong>Finish</strong>
+                            Brass
+                        </div>
+                        <div class="product-spec">
+                            <strong>Voltage</strong>
+                            12V
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Slide 10: Summary -->
+    <section id="summary" class="slide slide-summary">
+        <div class="summary-content">
+            <h3 style="color: var(--brass);">Your Package</h3>
+            <h2>Lighting Summary</h2>
+            
+            <div class="summary-items">
+                <div class="summary-item">
+                    <div class="summary-number">45</div>
+                    <div class="summary-label">Recessed Fixtures</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-number">8</div>
+                    <div class="summary-label">Pendants</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-number">3</div>
+                    <div class="summary-label">Chandeliers</div>
+                </div>
+                <div class="summary-item">
+                    <div class="summary-number">24</div>
+                    <div class="summary-label">Exterior Fixtures</div>
+                </div>
+            </div>
+            
+            <p style="text-align: center; margin: 0 auto;">Every fixture has been selected to complement your Updated Hawaiiana aesthetic, featuring your preferred brass and brushed nickel finishes with warm dim technology throughout.</p>
+            
+            <a href="#contact" class="cta-button">Schedule Review</a>
+        </div>
+    </section>
+
+    <!-- Slide 11: Contact -->
+    <section id="contact" class="slide slide-contact">
+        <div class="contact-content">
+            <div class="contact-logo">
+                <svg viewBox="0 0 120 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M60 10C50 25 35 32 35 55C35 75 47 85 60 92C73 85 85 75 85 55C85 32 70 25 60 10Z" stroke="#C9A962" stroke-width="2" fill="none"/>
+                    <text x="60" y="58" text-anchor="middle" fill="#C9A962" font-family="Cormorant Garamond" font-size="14" font-weight="500">READ</text>
+                    <text x="60" y="72" text-anchor="middle" fill="#C9A962" font-family="Montserrat" font-size="6" letter-spacing="0.15em">LIGHTING + SUPPLY</text>
+                </svg>
+            </div>
+            
+            <h2>Let's Illuminate Your Vision</h2>
+            <p style="text-align: center; margin: 1rem auto;">Ready to move forward? We're here to answer questions and refine your selections.</p>
+            
+            <div class="contact-info">
+                <div class="contact-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                        <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+                    </svg>
+                    <a href="tel:+18085551234">(808) 555-1234</a>
+                </div>
+                <div class="contact-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <path d="M22 6l-10 7L2 6"/>
+                    </svg>
+                    <a href="mailto:design@readlighting.com">design@readlighting.com</a>
+                </div>
+                <div class="contact-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    <a href="#">Honolulu, HI</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // Navigation highlighting
+        const sections = document.querySelectorAll('.slide');
+        const navLinks = document.querySelectorAll('nav a');
+
+        const observerOptions = {
+            root: null,
+            rootMargin: '0px',
+            threshold: 0.5
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.id;
+                    navLinks.forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === `#${id}`) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        }, observerOptions);
+
+        sections.forEach(section => observer.observe(section));
+
+        // Smooth scroll for nav links
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = link.getAttribute('href');
+                document.querySelector(targetId).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Animate elements on scroll
+        const animateOnScroll = () => {
+            const elements = document.querySelectorAll('.process-step, .product-card, .finish-card');
+            elements.forEach((el, index) => {
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight * 0.85) {
+                    el.style.opacity = '1';
+                    el.style.transform = 'translateY(0)';
+                    el.style.transitionDelay = `${index * 0.1}s`;
+                }
+            });
+        };
+
+        // Initial styles for animation
+        document.querySelectorAll('.process-step, .product-card, .finish-card').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(30px)';
+            el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        });
+
+        window.addEventListener('scroll', animateOnScroll);
+        animateOnScroll(); // Run once on load
+    </script>
+</body>
+</html>
+
+
+

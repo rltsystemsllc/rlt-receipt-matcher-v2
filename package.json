@@ -1,27 +1,35 @@
 {
   "name": "rlt-receipt-matcher",
-  "version": "1.0.0",
-  "description": "Automated receipt matching bot for QuickBooks Online - fetches from Gmail, parses receipts, and syncs to QBO",
+  "version": "2.0.0",
+  "description": "RLT Automation System - Bot 1 (Receipt Processor) + Bot 2 (Invoice Drafter) for QuickBooks Online",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "auth:gmail": "node src/scripts/gmail-auth.js",
     "auth:quickbooks": "node src/scripts/quickbooks-auth.js",
+    "auth:ringcentral": "node src/scripts/ringcentral-auth.js",
+    "auth:sheets": "node src/scripts/sheets-auth.js",
     "test:gmail": "node src/scripts/test-gmail.js",
     "test:parse": "node src/scripts/test-parser.js",
-    "test:qbo": "node src/scripts/test-quickbooks.js"
+    "test:qbo": "node src/scripts/test-quickbooks.js",
+    "test:ringcentral": "node src/scripts/test-ringcentral.js",
+    "test:sheets": "node src/scripts/test-sheets.js"
   },
   "keywords": [
     "quickbooks",
     "receipt",
     "gmail",
     "automation",
-    "bookkeeping"
+    "bookkeeping",
+    "invoicing",
+    "ringcentral",
+    "sms"
   ],
   "author": "Read Lighting",
   "license": "PRIVATE",
   "dependencies": {
+    "@ringcentral/sdk": "^5.0.0",
     "cheerio": "^1.0.0-rc.12",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
@@ -29,6 +37,8 @@
     "intuit-oauth": "^4.0.0",
     "node-cron": "^3.0.3",
     "pdf-parse": "^1.1.1",
+    "pdfkit": "^0.14.0",
+    "puppeteer": "^21.6.0",
     "tesseract.js": "^5.0.4",
     "winston": "^3.11.0",
     "uuid": "^9.0.1",

@@ -151,6 +151,16 @@ class QuickBooksClient {
    * Load tokens from file
    */
   async loadTokens() {
+    // First check for environment variable (for Railway deployment)
+    if (process.env.QBO_TOKEN_JSON) {
+      try {
+        return JSON.parse(process.env.QBO_TOKEN_JSON);
+      } catch {
+        logger.warn('Failed to parse QBO_TOKEN_JSON env var');
+      }
+    }
+    
+    // Fall back to file (local development)
     try {
       const data = await fs.readFile(config.quickbooks.tokenPath, 'utf8');
       return JSON.parse(data);

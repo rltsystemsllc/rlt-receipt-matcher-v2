@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+package-lock.json
 
 # Environment variables
 .env
@@ -39,5 +40,11 @@ build/
 
 # Test coverage
 coverage/
+
+# Cache
+.cache/
+*.cache
+.npm/
+.eslintcache
 
 
