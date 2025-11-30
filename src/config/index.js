@@ -91,7 +91,8 @@ const config = {
       materialFromStock: 10, // K - Material Pulled From Stock/Truck
       urgentBilling: 11,     // L - Urgent Billing Needed
       notesToBookkeeper: 12, // M - Notes to Bookkeeper
-      billingStatus: 13      // N - Billing Status
+      billingStatus: 13,     // N - Billing Status
+      emergencyRate: 14      // O - Emergency Rate (same-day/weekend) - checkbox
     },
     // Billing status values
     billingStatuses: {

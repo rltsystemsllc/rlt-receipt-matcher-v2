@@ -94,19 +94,41 @@ async function findOrCreateCustomer(jobName) {
 
 /**
  * Calculate labor totals from sheet rows
+ * Separates standard ($150/hr) and emergency ($300/hr same-day/weekend) rates
  */
 function calculateLabor(rows) {
-  const standardRate = config.billing.laborRateStandard;
-  const emergencyRate = config.billing.laborRateEmergency;
+  const standardRate = config.billing.laborRateStandard;   // $150
+  const emergencyRate = config.billing.laborRateEmergency; // $300
 
-  let totalHours = 0;
+  let standardHours = 0;
+  let emergencyHours = 0;
   const phases = new Set();
   const descriptions = [];
   const entries = [];
+  const standardEntries = [];
+  const emergencyEntries = [];
 
   for (const row of rows) {
     const hours = row.hoursWorked || 0;
-    totalHours += hours;
+    const isEmergency = row.emergencyRate === true;
+    
+    if (isEmergency) {
+      emergencyHours += hours;
+      emergencyEntries.push({
+        date: row.date,
+        hours,
+        phase: row.constructionPhase,
+        description: row.descriptionOfWork
+      });
+    } else {
+      standardHours += hours;
+      standardEntries.push({
+        date: row.date,
+        hours,
+        phase: row.constructionPhase,
+        description: row.descriptionOfWork
+      });
+    }
     
     if (row.constructionPhase) {
       phases.add(row.constructionPhase);
@@ -116,7 +138,8 @@ function calculateLabor(rows) {
       descriptions.push({
         date: row.date,
         description: row.descriptionOfWork,
-        hours
+        hours,
+        isEmergency
       });
     }
 
@@ -124,27 +147,44 @@ function calculateLabor(rows) {
       date: row.date,
       hours,
       phase: row.constructionPhase,
-      description: row.descriptionOfWork
+      description: row.descriptionOfWork,
+      isEmergency
     });
   }
 
-  // For now, all labor is standard rate
-  // TODO: Add logic to detect emergency/after-hours based on time or form field
-  const total = totalHours * standardRate;
+  const totalHours = standardHours + emergencyHours;
+  const standardTotal = standardHours * standardRate;
+  const emergencyTotal = emergencyHours * emergencyRate;
+  const total = standardTotal + emergencyTotal;
 
   // Generate polished summary
   const summary = generateLaborSummary(entries, Array.from(phases));
 
+  // Log if emergency rate was applied
+  if (emergencyHours > 0) {
+    logger.info('Emergency rate applied', { 
+      standardHours, 
+      emergencyHours, 
+      standardTotal, 
+      emergencyTotal,
+      total
+    });
+  }
+
   return {
     totalHours,
-    standardHours: totalHours,
-    emergencyHours: 0,
+    standardHours,
+    emergencyHours,
     standardRate,
     emergencyRate,
+    standardTotal,
+    emergencyTotal,
     total,
     phases: Array.from(phases),
     descriptions,
     entries,
+    standardEntries,
+    emergencyEntries,
     summary
   };
 }
@@ -247,22 +287,53 @@ function buildInvoiceLines(laborData, billableExpenses, stockMaterials) {
   const lines = [];
   let lineNum = 1;
 
-  // Labor line
-  if (laborData.totalHours > 0) {
-    const laborDescription = `LABOR — Phase(s): ${laborData.phases.join(', ')}\n\n` +
-      `Descriptions:\n${laborData.descriptions.map(d => `- ${d.description}`).join('\n')}\n\n` +
-      `Summary:\n${laborData.summary}`;
+  // Standard Labor line (if any standard hours)
+  if (laborData.standardHours > 0) {
+    const standardDescriptions = laborData.descriptions
+      .filter(d => !d.isEmergency)
+      .map(d => `- ${d.description}`)
+      .join('\n');
+    
+    const standardLaborDescription = `LABOR — Standard Rate ($${laborData.standardRate}/hr)\n` +
+      `Phase(s): ${laborData.phases.join(', ')}\n\n` +
+      `Work performed:\n${standardDescriptions || '- Electrical work as described'}\n\n` +
+      `${laborData.standardHours} hours × $${laborData.standardRate} = $${laborData.standardTotal.toFixed(2)}`;
 
     lines.push({
       Id: lineNum.toString(),
       LineNum: lineNum,
-      Description: laborDescription,
-      Amount: laborData.total,
+      Description: standardLaborDescription,
+      Amount: laborData.standardTotal,
       DetailType: 'SalesItemLineDetail',
       SalesItemLineDetail: {
-        Qty: laborData.totalHours,
-        UnitPrice: config.billing.laborRateStandard
-        // ItemRef would be set to your labor service item
+        Qty: laborData.standardHours,
+        UnitPrice: laborData.standardRate
+      }
+    });
+    lineNum++;
+  }
+
+  // Emergency Labor line (if any emergency hours - same-day/weekend)
+  if (laborData.emergencyHours > 0) {
+    const emergencyDescriptions = laborData.descriptions
+      .filter(d => d.isEmergency)
+      .map(d => `- ${d.description}`)
+      .join('\n');
+    
+    const emergencyLaborDescription = `LABOR — Emergency Rate ($${laborData.emergencyRate}/hr)\n` +
+      `⚡ Same-Day / Weekend Service\n\n` +
+      `Work performed:\n${emergencyDescriptions || '- Emergency electrical work'}\n\n` +
+      `${laborData.emergencyHours} hours × $${laborData.emergencyRate} = $${laborData.emergencyTotal.toFixed(2)}`;
+
+    lines.push({
+      Id: lineNum.toString(),
+      LineNum: lineNum,
+      Description: emergencyLaborDescription,
+      Amount: laborData.emergencyTotal,
+      DetailType: 'SalesItemLineDetail',
+      SalesItemLineDetail: {
+        Qty: laborData.emergencyHours,
+        UnitPrice: laborData.emergencyRate
       }
     });
     lineNum++;

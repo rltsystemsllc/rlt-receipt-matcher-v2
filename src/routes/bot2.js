@@ -234,6 +234,11 @@ router.get('/', async (req, res) => {
               <a href="/bot2/reminders" class="btn btn-secondary">📋 View All Reminders</a>
               <a href="/bot2/sheet-data" class="btn btn-secondary">📊 View Sheet Data</a>
               ${!sheetsAuth ? `<a href="/auth/sheets" class="btn btn-secondary">🔗 Connect Google Sheets</a>` : ''}
+              ${sheetsAuth ? `
+                <form action="/bot2/setup-emergency-rate" method="POST" style="display: inline;">
+                  <button type="submit" class="btn btn-secondary">⚡ Setup Emergency Rate Column</button>
+                </form>
+              ` : ''}
             </div>
           </div>
 
@@ -313,6 +318,25 @@ router.post('/run', async (req, res) => {
   } catch (error) {
     logger.error('Manual run failed', { error: error.message });
     res.redirect('/bot2?run=error');
+  }
+});
+
+/**
+ * Setup Emergency Rate column in the Google Sheet
+ * Adds header to column O for same-day/weekend rate checkbox
+ */
+router.post('/setup-emergency-rate', async (req, res) => {
+  try {
+    const result = await sheetsService.setupEmergencyRateColumn();
+    
+    if (result.existed) {
+      res.redirect('/bot2?setup=exists');
+    } else {
+      res.redirect('/bot2?setup=success');
+    }
+  } catch (error) {
+    logger.error('Emergency rate setup failed', { error: error.message });
+    res.redirect('/bot2?setup=error&msg=' + encodeURIComponent(error.message));
   }
 });
 

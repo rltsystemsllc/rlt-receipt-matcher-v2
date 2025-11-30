@@ -312,10 +312,44 @@ router.get('/', async (req, res) => {
             <div class="webhook-url">
               ${req.protocol}://${req.get('host')}/bot3/webhook/sms
             </div>
-            <p style="color: #888; font-size: 0.85rem; margin-top: 10px;">
-              This same webhook handles Bot 2 and Bot 3 messages. The system will route to the appropriate bot.
+            <div class="actions" style="margin-top: 15px;">
+              <button onclick="setupWebhook()" class="btn btn-primary" id="webhookBtn">
+                🔗 Setup Webhook Subscription
+              </button>
+            </div>
+            <p id="webhookStatus" style="color: #888; font-size: 0.85rem; margin-top: 10px;">
+              Click the button above to automatically create a RingCentral webhook subscription.
             </p>
           </div>
+          <script>
+            async function setupWebhook() {
+              const btn = document.getElementById('webhookBtn');
+              const status = document.getElementById('webhookStatus');
+              btn.disabled = true;
+              btn.textContent = '⏳ Setting up...';
+              
+              try {
+                const response = await fetch('/bot3/api/setup-webhook', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                  btn.textContent = '✅ Webhook Active';
+                  btn.style.background = '#4caf50';
+                  status.innerHTML = '<span style="color: #4caf50;">✅ Webhook subscription created successfully!</span>';
+                } else {
+                  btn.textContent = '❌ Failed - Try Again';
+                  btn.style.background = '#f44336';
+                  status.innerHTML = '<span style="color: #f44336;">Error: ' + result.error + '</span>';
+                  btn.disabled = false;
+                }
+              } catch (error) {
+                btn.textContent = '❌ Failed - Try Again';
+                btn.style.background = '#f44336';
+                status.innerHTML = '<span style="color: #f44336;">Error: ' + error.message + '</span>';
+                btn.disabled = false;
+              }
+            }
+          </script>
 
           <!-- QR Code Section -->
           <div class="card">
@@ -540,6 +574,33 @@ router.post('/api/inventory/:jobName/billed', async (req, res) => {
       ...result
     });
   } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * Setup RingCentral webhook subscription
+ */
+router.post('/api/setup-webhook', async (req, res) => {
+  try {
+    const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+      : process.env.BASE_URL || `http://localhost:${config.port}`;
+    
+    const webhookUrl = `${baseUrl}/bot3/webhook/sms`;
+    
+    const result = await ringcentralService.setupWebhook(webhookUrl);
+    
+    logger.info('Webhook subscription created', { webhookUrl });
+    
+    res.json({ 
+      success: true, 
+      message: 'Webhook subscription created',
+      webhookUrl,
+      subscription: result
+    });
+  } catch (error) {
+    logger.error('Failed to setup webhook', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
 });

@@ -70,7 +70,7 @@ async function getUrgentBillingRows() {
   try {
     const response = await sheetsClient.spreadsheets.values.get({
       spreadsheetId,
-      range: `${sheetName}!A:N`
+      range: `${sheetName}!A:O`  // Extended to include Emergency Rate column
     });
 
     const rows = response.data.values || [];
@@ -116,7 +116,7 @@ async function getAllUnbilledRowsForJob(jobName) {
   try {
     const response = await sheetsClient.spreadsheets.values.get({
       spreadsheetId,
-      range: `${sheetName}!A:N`
+      range: `${sheetName}!A:O`  // Extended to include Emergency Rate column
     });
 
     const rows = response.data.values || [];
@@ -152,6 +152,10 @@ async function getAllUnbilledRowsForJob(jobName) {
 function parseRow(row, rowIndex) {
   const cols = config.sheets.columns;
   
+  // Check if emergency rate is checked (YES, true, checked, 1, or any truthy value)
+  const emergencyRateValue = (row[cols.emergencyRate] || '').toString().toUpperCase();
+  const isEmergencyRate = ['YES', 'TRUE', 'CHECKED', '1', 'X'].includes(emergencyRateValue);
+  
   return {
     rowIndex,
     timestamp: row[cols.timestamp] || '',
@@ -167,7 +171,8 @@ function parseRow(row, rowIndex) {
     materialFromStock: row[cols.materialFromStock] || '',
     urgentBilling: row[cols.urgentBilling] || '',
     notesToBookkeeper: row[cols.notesToBookkeeper] || '',
-    billingStatus: row[cols.billingStatus] || ''
+    billingStatus: row[cols.billingStatus] || '',
+    emergencyRate: isEmergencyRate  // Boolean: true if same-day/weekend rate applies
   };
 }
 
@@ -258,7 +263,7 @@ async function getAllRows() {
   try {
     const response = await sheetsClient.spreadsheets.values.get({
       spreadsheetId,
-      range: `${sheetName}!A:N`
+      range: `${sheetName}!A:O`  // Extended to include Emergency Rate column
     });
 
     const rows = response.data.values || [];
@@ -324,6 +329,53 @@ async function handleCallback(code) {
   return tokens;
 }
 
+/**
+ * Add Emergency Rate column header to the sheet (Column O)
+ * This is a one-time setup function
+ */
+async function setupEmergencyRateColumn() {
+  await initialize();
+
+  if (!sheetsClient) {
+    throw new Error('Google Sheets not authenticated');
+  }
+
+  const spreadsheetId = config.sheets.spreadsheetId;
+  const sheetName = config.sheets.sheetName;
+
+  try {
+    // First, check if the header already exists
+    const response = await sheetsClient.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!O1`
+    });
+
+    const currentHeader = response.data.values?.[0]?.[0] || '';
+    
+    if (currentHeader && currentHeader.toLowerCase().includes('emergency')) {
+      logger.info('Emergency Rate column already exists');
+      return { success: true, message: 'Column already exists', existed: true };
+    }
+
+    // Add the header to column O, row 1
+    await sheetsClient.spreadsheets.values.update({
+      spreadsheetId,
+      range: `${sheetName}!O1`,
+      valueInputOption: 'RAW',
+      resource: {
+        values: [['⚡ Emergency Rate (Same-Day/Weekend)?']]
+      }
+    });
+
+    logger.info('Emergency Rate column header added to sheet');
+    return { success: true, message: 'Column header added successfully', existed: false };
+
+  } catch (error) {
+    logger.error('Failed to setup Emergency Rate column', { error: error.message });
+    throw error;
+  }
+}
+
 module.exports = {
   initialize,
   getUrgentBillingRows,
@@ -334,7 +386,8 @@ module.exports = {
   getAllRows,
   isAuthenticated,
   getAuthUrl,
-  handleCallback
+  handleCallback,
+  setupEmergencyRateColumn
 };
 
 
