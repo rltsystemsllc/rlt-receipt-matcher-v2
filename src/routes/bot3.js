@@ -466,7 +466,6 @@ router.post('/webhook/sms', async (req, res) => {
         await bot3.handleIncomingSms(result.from, result.text);
       } else {
         // Check if there's an active Bot 3 conversation
-        const conversationService = require('../bot3/conversation');
         const activeConv = conversationService.getConversation(result.from);
         
         if (activeConv && activeConv.step !== 'complete') {

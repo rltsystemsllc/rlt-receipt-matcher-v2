@@ -1,0 +1,24 @@
+[
+  {
+    "id": "1764468127241",
+    "createdAt": "2025-11-30T02:02:07.241Z",
+    "updatedAt": "2025-11-30T02:02:07.241Z",
+    "status": "draft",
+    "projectName": "Test Project - Smith Residence Panel Upgrade",
+    "location": "123 Wailea Dr, Kihei",
+    "employer": "RLT Systems",
+    "projectType": "Panel Upgrade",
+    "startDate": "2023-06",
+    "endDate": null,
+    "contractAmount": "4500",
+    "squareFootage": "",
+    "workersSupervised": "1",
+    "experienceMonths": "1",
+    "scopeItems": [
+      "Service / Panel Installation"
+    ],
+    "voiceTranscript": "",
+    "briefDescription": "",
+    "detailedDescription": ""
+  }
+]

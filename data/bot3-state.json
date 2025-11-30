@@ -1,0 +1,20 @@
+{
+  "conversations": {
+    "+18088666500": {
+      "phoneNumber": "+18088666500",
+      "step": "select_job",
+      "startedAt": 1764469087794,
+      "lastActivity": 1764469087794,
+      "lastJobName": null,
+      "jobName": null,
+      "contractorName": null,
+      "projectName": null,
+      "pulledFrom": null,
+      "rawDescription": null,
+      "parsedMaterials": null,
+      "humanSummary": null,
+      "recentJobs": []
+    }
+  },
+  "savedAt": "2025-11-30T02:18:07.794Z"
+}
