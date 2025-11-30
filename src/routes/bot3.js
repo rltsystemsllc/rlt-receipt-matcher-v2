@@ -583,9 +583,11 @@ router.post('/api/inventory/:jobName/billed', async (req, res) => {
  */
 router.post('/api/setup-webhook', async (req, res) => {
   try {
-    const baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN 
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-      : process.env.BASE_URL || `http://localhost:${config.port}`;
+    // Always use HTTPS for production webhooks
+    const host = req.get('host');
+    const isProduction = host && !host.includes('localhost');
+    const protocol = isProduction ? 'https' : 'http';
+    const baseUrl = `${protocol}://${host}`;
     
     const webhookUrl = `${baseUrl}/bot3/webhook/sms`;
     
