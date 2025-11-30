@@ -141,6 +141,13 @@ router.get('/', (req, res) => {
       </div>
       
       <div class="card">
+        <h2>🤖 Automation Bots</h2>
+        <a href="/bot2" class="btn btn-secondary" style="background: #00d4aa22; border: 1px solid #00d4aa;">🟩 Bot 2 - Invoice Drafter</a>
+        <a href="/bot3" class="btn btn-secondary" style="background: #4fc3f722; border: 1px solid #4fc3f7;">🟦 Bot 3 - Inventory Bot</a>
+        <a href="/license" class="btn btn-primary">📋 License Helper</a>
+      </div>
+      
+      <div class="card">
         <h2>📋 Schedule</h2>
         <pre>Cron: ${status.cron}</pre>
         <p style="color: #718096;">Default: Every 5 minutes</p>

@@ -2,6 +2,7 @@
  * RLT Automation System - Configuration
  * Bot 1: Receipt Processor (Gmail → QBO Expenses)
  * Bot 2: Invoice Drafter (Google Sheet → QBO Invoices + RingCentral SMS)
+ * Bot 3: Inventory Bot (RingCentral SMS → Google Sheets Inventory Log)
  */
 
 require('dotenv').config();
@@ -155,6 +156,45 @@ const config = {
     invoiceMemo: 'Thank you for choosing RLT Electrical!\nQuestions? Call us at (808) 866-6500 or reply to this email.'
   },
 
+  // =============================================
+  // BOT 3 - INVENTORY BOT (New)
+  // =============================================
+
+  inventory: {
+    // Inventory Pull Log sheet configuration
+    inventorySheetName: process.env.INVENTORY_SHEET_NAME || 'Inventory Pull Log',
+    
+    // Column mappings for Inventory Pull Log (0-indexed)
+    inventoryColumns: {
+      timestamp: 0,          // A - Timestamp (auto)
+      jobName: 1,            // B - Job Name
+      contractorName: 2,     // C - Contractor/Customer Name
+      projectName: 3,        // D - Project Name
+      pulledFrom: 4,         // E - Pulled From (Container/Truck/Both)
+      rawDescription: 5,     // F - Raw Description
+      parsedMaterials: 6,    // G - Parsed Materials (JSON)
+      humanSummary: 7,       // H - Human Summary
+      billed: 8,             // I - Billed? (Yes/No)
+      invoiceNumber: 9       // J - Invoice #
+    },
+    
+    // Pull locations
+    pullLocations: {
+      container: 'Container',
+      truck: 'Truck',
+      both: 'Container+Truck'
+    },
+    
+    // Trigger phrases to start inventory flow
+    triggerPhrases: ['inventory', 'inventory start', 'start', 'pull', 'pulling'],
+    
+    // Conversation timeout (30 minutes)
+    conversationTimeout: 30 * 60 * 1000,
+    
+    // State file path
+    statePath: './data/bot3-state.json'
+  },
+
   // PDF Generation
   pdf: {
     outputDir: './generated-pdfs',
@@ -224,15 +264,38 @@ function validateBot2Config() {
 }
 
 /**
+ * Validate required configuration for Bot 3
+ */
+function validateBot3Config() {
+  const errors = [];
+
+  if (!config.sheets.spreadsheetId) {
+    errors.push('GOOGLE_SHEET_ID is required for Bot 3');
+  }
+  if (!config.ringcentral.clientId) {
+    errors.push('RINGCENTRAL_CLIENT_ID is required for Bot 3');
+  }
+  if (!config.ringcentral.clientSecret) {
+    errors.push('RINGCENTRAL_CLIENT_SECRET is required for Bot 3');
+  }
+  if (!config.ringcentral.botPhoneNumber) {
+    errors.push('RINGCENTRAL_BOT_PHONE is required for Bot 3');
+  }
+
+  return errors;
+}
+
+/**
  * Validate all configuration
  */
 function validateConfig() {
-  return [...validateBot1Config(), ...validateBot2Config()];
+  return [...validateBot1Config(), ...validateBot2Config(), ...validateBot3Config()];
 }
 
 config.validate = validateConfig;
 config.validateBot1 = validateBot1Config;
 config.validateBot2 = validateBot2Config;
+config.validateBot3 = validateBot3Config;
 
 module.exports = config;
 

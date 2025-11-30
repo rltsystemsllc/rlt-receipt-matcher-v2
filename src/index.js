@@ -12,6 +12,12 @@
  *   2. Creates draft invoices in QuickBooks
  *   3. Sends notifications via RingCentral SMS
  *   4. Manages reminder cycles
+ * 
+ * Bot 3 - Inventory Bot:
+ *   1. Receives inbound RingCentral SMS (NFC/QR/manual trigger)
+ *   2. Guides Bobby through material logging before installation
+ *   3. Writes material pulls to Google Sheet (Inventory Pull Log)
+ *   4. Links inventory to job records for billing
  */
 
 require('dotenv').config();
@@ -27,6 +33,8 @@ const indexRoutes = require('./routes/index');
 const authRoutes = require('./routes/auth');
 const healthRoutes = require('./routes/health');
 const bot2Routes = require('./routes/bot2');
+const bot3Routes = require('./routes/bot3');
+const licenseRoutes = require('./routes/license');
 
 // Create Express app
 const app = express();
@@ -46,6 +54,8 @@ app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
 app.use('/health', healthRoutes);
 app.use('/bot2', bot2Routes);
+app.use('/bot3', bot3Routes);
+app.use('/license', licenseRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {
@@ -66,6 +76,7 @@ async function start() {
   // Validate configuration
   const bot1Errors = config.validateBot1();
   const bot2Errors = config.validateBot2();
+  const bot3Errors = config.validateBot3();
   
   if (bot1Errors.length > 0) {
     logger.warn('Bot 1 configuration warnings:', { errors: bot1Errors });
@@ -73,8 +84,11 @@ async function start() {
   if (bot2Errors.length > 0) {
     logger.warn('Bot 2 configuration warnings:', { errors: bot2Errors });
   }
+  if (bot3Errors.length > 0) {
+    logger.warn('Bot 3 configuration warnings:', { errors: bot3Errors });
+  }
   
-  if (bot1Errors.length > 0 || bot2Errors.length > 0) {
+  if (bot1Errors.length > 0 || bot2Errors.length > 0 || bot3Errors.length > 0) {
     logger.info('Some features may not work until configuration is complete.');
     logger.info('Copy env.example to .env and fill in your credentials.');
   }
@@ -96,6 +110,13 @@ async function start() {
     logger.info('🟩 BOT 2 - Invoice Drafter');
     logger.info(`   Dashboard: http://localhost:${config.port}/bot2`);
     logger.info(`   Sheets Auth: http://localhost:${config.port}/auth/sheets`);
+    logger.info('');
+    logger.info('🟦 BOT 3 - Inventory Bot');
+    logger.info(`   Dashboard: http://localhost:${config.port}/bot3`);
+    logger.info(`   SMS Webhook: http://localhost:${config.port}/bot3/webhook/sms`);
+    logger.info('');
+    logger.info('📋 LICENSE HELPER TOOL');
+    logger.info(`   Dashboard: http://localhost:${config.port}/license`);
     logger.info('='.repeat(60));
   });
 
