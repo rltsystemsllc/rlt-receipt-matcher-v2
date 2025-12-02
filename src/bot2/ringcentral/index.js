@@ -63,6 +63,7 @@ async function initialize() {
         logger.info('RingCentral authenticated with JWT');
       } else {
         logger.warn('RingCentral needs authentication - no JWT token configured');
+        platform = null;  // Reset so next call tries again
         return null;
       }
     }
@@ -76,6 +77,7 @@ async function initialize() {
     return platform;
   } catch (error) {
     logger.error('Failed to initialize RingCentral', { error: error.message });
+    platform = null;  // Reset so next call tries again
     return null;
   }
 }
