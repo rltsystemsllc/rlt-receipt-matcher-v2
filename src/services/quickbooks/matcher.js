@@ -137,10 +137,14 @@ class TransactionMatcher {
 
   /**
    * Find or create customer/project in QuickBooks
-   * If job name doesn't exist, automatically creates a new Project
+   * options: { project?: boolean, parentRef?: string }
+   * - project defaults to true (create as Job)
+   * - parentRef optional; only used when project=true
    */
-  async findOrCreateCustomer(jobName) {
+  async findOrCreateCustomer(jobName, options = {}) {
     if (!jobName) return null;
+    const createAsProject = options.project !== false; // default true
+    const parentRef = options.parentRef || null;
 
     // Check cache first
     if (this.customerCache.has(jobName)) {
@@ -161,15 +165,23 @@ class TransactionMatcher {
       }
 
       // Customer/Project not found - create a new one
-      logger.info(`Job "${jobName}" not found in QuickBooks, creating new project...`);
+      logger.info(`Job "${jobName}" not found in QuickBooks, creating new ${createAsProject ? 'project' : 'customer'}...`);
 
-      const newCustomer = await qboClient.makeApiCall('POST', '/customer', {
+      const payload = {
         DisplayName: jobName,
         CompanyName: jobName,
-        Job: true,  // Mark as a job/project
-        BillWithParent: false,
         Notes: `Auto-created by RLT Receipt Matcher on ${new Date().toISOString()}`
-      });
+      };
+
+      if (createAsProject) {
+        payload.Job = true;  // Mark as a job/project
+        payload.BillWithParent = false;
+        if (parentRef) {
+          payload.ParentRef = { value: parentRef };
+        }
+      }
+
+      const newCustomer = await qboClient.makeApiCall('POST', '/customer', payload);
 
       this.customerCache.set(jobName, newCustomer.Customer);
       logger.qbo('created new project/customer', { 
