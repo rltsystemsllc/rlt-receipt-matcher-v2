@@ -198,11 +198,115 @@ Please review in the dashboard.`;
   return sendNotification(message);
 }
 
+/**
+ * Setup webhook subscription for incoming SMS
+ */
+async function setupWebhook(webhookUrl) {
+  const plt = await initialize();
+  if (!plt) {
+    throw new Error('RingCentral not initialized');
+  }
+
+  try {
+    // First, check for existing subscriptions and remove them
+    const existingResponse = await plt.get('/restapi/v1.0/subscription');
+    const existing = await existingResponse.json();
+    
+    if (existing.records) {
+      for (const sub of existing.records) {
+        // Remove old webhook subscriptions
+        if (sub.deliveryMode?.transportType === 'WebHook') {
+          try {
+            await plt.delete(`/restapi/v1.0/subscription/${sub.id}`);
+            logger.info('Removed old webhook subscription', { id: sub.id });
+          } catch (e) {
+            logger.warn('Failed to remove old subscription', { id: sub.id, error: e.message });
+          }
+        }
+      }
+    }
+
+    // Create new webhook subscription
+    const response = await plt.post('/restapi/v1.0/subscription', {
+      eventFilters: [
+        '/restapi/v1.0/account/~/extension/~/message-store/instant?type=SMS'
+      ],
+      deliveryMode: {
+        transportType: 'WebHook',
+        address: webhookUrl
+      },
+      expiresIn: 604800 // 7 days
+    });
+
+    const data = await response.json();
+    logger.info('Webhook subscription created', { 
+      id: data.id, 
+      webhookUrl,
+      expiresAt: data.expirationTime 
+    });
+    
+    return data;
+  } catch (error) {
+    logger.error('Failed to setup webhook', { error: error.message });
+    throw error;
+  }
+}
+
+/**
+ * Process incoming webhook payload
+ */
+async function processIncomingWebhook(payload) {
+  try {
+    // Handle verification request
+    if (payload.validation_token) {
+      return { validation_token: payload.validation_token };
+    }
+
+    // Extract SMS message from webhook
+    if (payload.body?.extensionId && payload.body?.attachments) {
+      const attachment = payload.body.attachments[0];
+      if (attachment?.type === 'Text') {
+        return {
+          from: payload.body.from?.phoneNumber,
+          to: payload.body.to?.[0]?.phoneNumber,
+          text: attachment.content || '',
+          timestamp: payload.timestamp,
+          messageId: payload.body.id
+        };
+      }
+    }
+
+    // Alternative format
+    if (payload.from && payload.text) {
+      return payload;
+    }
+
+    logger.warn('Unknown webhook payload format', { 
+      hasBody: !!payload.body,
+      keys: Object.keys(payload) 
+    });
+    return null;
+  } catch (error) {
+    logger.error('Error processing webhook', { error: error.message });
+    return null;
+  }
+}
+
+/**
+ * Send SMS to a specific number
+ */
+async function sendToNumber(to, message) {
+  return sendSMS(to, message);
+}
+
 module.exports = {
   initialize,
   isAuthenticated,
   sendSMS,
+  sendToNumber,
   sendNotification,
   sendInvoiceApproval,
-  sendReminder
+  sendReminder,
+  setupWebhook,
+  processIncomingWebhook
 };
