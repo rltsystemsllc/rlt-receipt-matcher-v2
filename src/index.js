@@ -35,6 +35,7 @@ const healthRoutes = require('./routes/health');
 const bot2Routes = require('./routes/bot2');
 const bot3Routes = require('./routes/bot3');
 const licenseRoutes = require('./routes/license');
+const dashboardRoutes = require('./routes/dashboard');
 
 // Create Express app
 const app = express();
@@ -56,6 +57,7 @@ app.use('/health', healthRoutes);
 app.use('/bot2', bot2Routes);
 app.use('/bot3', bot3Routes);
 app.use('/license', licenseRoutes);
+app.use('/dashboard', dashboardRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {

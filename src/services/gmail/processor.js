@@ -7,6 +7,7 @@ const gmailFetcher = require('./fetcher');
 const parserRouter = require('../../parsers');
 const { createReceipt, addAttachment, addProcessingNote } = require('../../models/receipt');
 const logger = require('../../utils/logger');
+const receiptStore = require('../receipt-store');
 
 class GmailProcessor {
   /**
@@ -122,6 +123,27 @@ class GmailProcessor {
     await gmailFetcher.markAsProcessed(email.id);
 
     logger.receipt('parsed', receipt);
+
+    // Add PDF attachment reference for viewing
+    if (email.attachments.length > 0) {
+      const pdfAttachment = email.attachments.find(a => 
+        a.mimeType === 'application/pdf' || a.filename?.toLowerCase().endsWith('.pdf')
+      );
+      if (pdfAttachment) {
+        receipt.pdfAttachment = {
+          messageId: pdfAttachment.messageId,
+          attachmentId: pdfAttachment.id,
+          filename: pdfAttachment.filename
+        };
+      }
+    }
+
+    // Save to receipt store for dashboard
+    try {
+      receiptStore.addReceipt(receipt);
+    } catch (storeError) {
+      logger.warn('Failed to save receipt to store', { error: storeError.message });
+    }
 
     return receipt;
   }

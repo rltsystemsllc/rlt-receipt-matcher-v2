@@ -59,26 +59,45 @@ class GmailFetcher {
    * Build Gmail search query for receipt emails
    */
   buildSearchQuery() {
-    // Search for unread emails that might be receipts
-    // Excludes already processed emails
-    const vendorKeywords = [
-      'home depot',
-      'lowes',
-      "lowe's",
-      'amazon',
-      'ced',
-      'menards',
-      'ace hardware',
-      'grainger',
-      'receipt',
-      'order confirmation',
-      'invoice',
-      'your order'
+    // Search for unread emails that are actual receipts
+    // Excludes feedback surveys, notifications, and already processed emails
+    
+    // Must have receipt-like subject
+    const receiptTerms = [
+      'subject:receipt',
+      'subject:"order confirmation"',
+      'subject:"your order"',
+      'subject:invoice',
+      'subject:"purchase confirmation"',
+      'subject:"payment received"',
+      'subject:"transaction"'
     ];
 
-    const orQuery = vendorKeywords.map(k => `"${k}"`).join(' OR ');
+    // Exclude survey/feedback emails and RLT Systems outbound invoices
+    const excludeTerms = [
+      '-subject:"tell us about"',
+      '-subject:feedback',
+      '-subject:survey',
+      '-subject:"how was"',
+      '-subject:"rate your"',
+      '-subject:"build failed"',
+      '-subject:"deployment"',
+      // Exclude RLT Systems outbound invoices (these are invoices TO customers, not receipts)
+      '-subject:"from RLT Systems"',
+      '-subject:"to RLT Systems LLC"',
+      '-subject:"Payment received"',
+      '-subject:"payment request from RLT"',
+      '-subject:"Payroll direct deposit"',
+      '-subject:"Payroll tax withdrawal"',
+      '-subject:"ATTENTION: Payment"'
+    ];
 
-    return `is:unread -label:${config.gmail.processedLabel} (${orQuery})`;
+    const includeQuery = receiptTerms.join(' OR ');
+    const excludeQuery = excludeTerms.join(' ');
+
+    // Temporarily include READ emails to catch missed receipts after 11/17/2025
+    const afterDate = 'after:2025/11/17';
+    return `${afterDate} -label:${config.gmail.processedLabel} (${includeQuery}) ${excludeQuery}`;
   }
 
   /**
@@ -298,6 +317,40 @@ class GmailFetcher {
   async markAsError(messageId, errorMessage) {
     // For now, just log it - could add an error label later
     logger.gmail('processing error', { messageId, error: errorMessage });
+  }
+
+  /**
+   * Unmark email as processed (remove label) so it can be re-scanned
+   */
+  async unmarkAsProcessed(messageId) {
+    const gmail = gmailClient.getApi();
+    const labelId = await this.ensureProcessedLabel();
+
+    try {
+      await gmail.users.messages.modify({
+        userId: 'me',
+        id: messageId,
+        requestBody: {
+          removeLabelIds: [labelId]
+        }
+      });
+
+      logger.gmail('unmarked as processed', { messageId });
+      return true;
+    } catch (error) {
+      logger.error('Failed to unmark message as processed', { messageId, error: error.message });
+      return false;
+    }
+  }
+
+  /**
+   * Unmark multiple emails as processed
+   */
+  async unmarkMultipleAsProcessed(messageIds) {
+    const results = await Promise.all(
+      messageIds.map(id => this.unmarkAsProcessed(id))
+    );
+    return results.filter(r => r).length;
   }
 }
 

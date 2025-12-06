@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bot 1 Dashboard - Mockup</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    
+    .container { max-width: 1400px; margin: 0 auto; }
+    
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #30363d;
+    }
+    
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 600;
+      color: #58a6ff;
+    }
+    
+    .subtitle { color: #8b949e; font-size: 0.9rem; margin-top: 4px; }
+    
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .status-pill.running { background: rgba(35, 134, 54, 0.2); color: #3fb950; }
+    .status-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    
+    /* === ALERT BANNER === */
+    .alert-banner {
+      background: linear-gradient(135deg, rgba(187, 128, 9, 0.15) 0%, rgba(187, 128, 9, 0.05) 100%);
+      border: 1px solid rgba(187, 128, 9, 0.4);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .alert-banner .message {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .alert-banner .icon { font-size: 1.5rem; }
+    .alert-banner h3 { color: #d29922; font-size: 1rem; }
+    .alert-banner p { color: #8b949e; font-size: 0.85rem; }
+    .alert-banner .amount { font-size: 1.8rem; font-weight: 700; color: #d29922; }
+    
+    /* === METRIC CARDS === */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .metric-card .label { color: #8b949e; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .metric-card .value { font-size: 2rem; font-weight: 700; margin: 8px 0 4px; }
+    .metric-card .subtext { color: #8b949e; font-size: 0.85rem; }
+    .metric-card.danger .value { color: #f85149; }
+    .metric-card.warning .value { color: #d29922; }
+    .metric-card.success .value { color: #3fb950; }
+    .metric-card.info .value { color: #58a6ff; }
+    
+    /* === MAIN GRID === */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+    }
+    
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-header h2 { font-size: 1rem; font-weight: 600; }
+    .card-body { padding: 0; }
+    
+    /* === EXPENSE TABLE === */
+    .expense-table { width: 100%; border-collapse: collapse; }
+    .expense-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #8b949e;
+      background: #0d1117;
+    }
+    .expense-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #21262d;
+      vertical-align: middle;
+    }
+    .expense-table tr:hover { background: rgba(56, 139, 253, 0.05); }
+    
+    .vendor-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .vendor-badge.home-depot { background: rgba(247, 106, 12, 0.15); color: #f76a0c; }
+    .vendor-badge.lowes { background: rgba(0, 75, 141, 0.2); color: #58a6ff; }
+    .vendor-badge.amazon { background: rgba(255, 153, 0, 0.15); color: #ff9900; }
+    .vendor-badge.ced { background: rgba(76, 175, 80, 0.15); color: #4caf50; }
+    
+    .job-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+    .job-status.linked { background: rgba(35, 134, 54, 0.15); color: #3fb950; }
+    .job-status.unlinked { background: rgba(248, 81, 73, 0.15); color: #f85149; }
+    
+    .btn-assign {
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-assign:hover { background: #2ea043; }
+    
+    .btn-view {
+      background: #30363d;
+      color: #58a6ff;
+      border: 1px solid #58a6ff;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-weight: 500;
+      margin-right: 6px;
+    }
+    .btn-view:hover { background: #58a6ff; color: #0d1117; }
+    
+    /* Receipt Preview Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      max-width: 900px;
+      width: 95%;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h3 { margin: 0; color: #58a6ff; }
+    .modal-close {
+      background: none;
+      border: none;
+      color: #8b949e;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+    .modal-close:hover { color: #f85149; }
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .receipt-preview {
+      background: #fff;
+      color: #000;
+      padding: 24px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .receipt-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .receipt-meta-item {
+      background: #21262d;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    .receipt-meta-item .label { color: #8b949e; font-size: 0.75rem; text-transform: uppercase; }
+    .receipt-meta-item .value { color: #e6edf3; font-size: 1.1rem; font-weight: 600; margin-top: 4px; }
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid #30363d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .job-select {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      min-width: 250px;
+    }
+    .btn-save {
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-save:hover { background: #2ea043; }
+    
+    /* === JOBS READY TO BILL === */
+    .job-list { list-style: none; }
+    .job-item {
+      padding: 16px 20px;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .job-item:last-child { border-bottom: none; }
+    .job-item .name { font-weight: 500; }
+    .job-item .details { color: #8b949e; font-size: 0.85rem; margin-top: 4px; }
+    .job-item .amount { font-size: 1.1rem; font-weight: 600; color: #3fb950; }
+    
+    .btn-invoice {
+      background: #58a6ff;
+      color: #0d1117;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn-invoice:hover { background: #79b8ff; }
+    
+    /* === ACTIVITY FEED === */
+    .activity-feed { list-style: none; }
+    .activity-item {
+      padding: 14px 20px;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      gap: 12px;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+    .activity-icon.receipt { background: rgba(88, 166, 255, 0.15); }
+    .activity-icon.sync { background: rgba(35, 134, 54, 0.15); }
+    .activity-icon.error { background: rgba(248, 81, 73, 0.15); }
+    .activity-content { flex: 1; }
+    .activity-content .text { font-size: 0.9rem; }
+    .activity-content .time { color: #8b949e; font-size: 0.8rem; margin-top: 2px; }
+    
+    /* === QUICK ACTIONS === */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      padding: 16px 20px;
+    }
+    .action-btn {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+      padding: 14px;
+      border-radius: 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .action-btn:hover { background: #30363d; border-color: #58a6ff; }
+    .action-btn .icon { font-size: 1.3rem; margin-bottom: 6px; }
+    .action-btn .label { font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- HEADER -->
+    <header>
+      <div>
+        <h1>⚡ RLT Receipt Matcher</h1>
+        <p class="subtitle">Bot 1 • Expense Tracking Dashboard</p>
+      </div>
+      <div class="status-pill running">
+        <span class="dot"></span>
+        Running • Last scan: 2 min ago
+      </div>
+    </header>
+
+    <!-- ALERT BANNER - Needs Attention -->
+    <div class="alert-banner">
+      <div class="message">
+        <span class="icon">⚠️</span>
+        <div>
+          <h3>5 expenses need job assignment</h3>
+          <p>Assign jobs to enable billing</p>
+        </div>
+      </div>
+      <div class="amount">$847.32</div>
+    </div>
+
+    <!-- METRIC CARDS -->
+    <div class="metrics">
+      <div class="metric-card danger">
+        <div class="label">Unassigned</div>
+        <div class="value">$847</div>
+        <div class="subtext">5 expenses need jobs</div>
+      </div>
+      <div class="metric-card warning">
+        <div class="label">This Week</div>
+        <div class="value">$2,341</div>
+        <div class="subtext">12 receipts processed</div>
+      </div>
+      <div class="metric-card success">
+        <div class="label">Ready to Bill</div>
+        <div class="value">$4,892</div>
+        <div class="subtext">3 jobs complete</div>
+      </div>
+      <div class="metric-card info">
+        <div class="label">Synced to QBO</div>
+        <div class="value">47</div>
+        <div class="subtext">This month</div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-grid">
+      <!-- LEFT: Expenses Needing Attention -->
+      <div class="card">
+        <div class="card-header">
+          <h2>🔴 Expenses Needing Job Assignment</h2>
+          <span style="color: #8b949e; font-size: 0.85rem;">Click to assign</span>
+        </div>
+        <div class="card-body">
+          <table class="expense-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Vendor</th>
+                <th>Amount</th>
+                <th>Job</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Dec 2</td>
+                <td><span class="vendor-badge home-depot">🏠 Home Depot</span></td>
+                <td><strong>$234.56</strong></td>
+                <td><span class="job-status unlinked">❌ Not linked</span></td>
+                <td>
+                  <button class="btn-view" onclick="showReceipt('hd1')">👁 View</button>
+                  <button class="btn-assign" onclick="openAssignModal('hd1')">Assign</button>
+                </td>
+              </tr>
+              <tr>
+                <td>Dec 2</td>
+                <td><span class="vendor-badge lowes">🔧 Lowe's</span></td>
+                <td><strong>$89.99</strong></td>
+                <td><span class="job-status unlinked">❌ Not linked</span></td>
+                <td>
+                  <button class="btn-view" onclick="showReceipt('lowes1')">👁 View</button>
+                  <button class="btn-assign" onclick="openAssignModal('lowes1')">Assign</button>
+                </td>
+              </tr>
+              <tr>
+                <td>Dec 1</td>
+                <td><span class="vendor-badge amazon">📦 Amazon</span></td>
+                <td><strong>$156.43</strong></td>
+                <td><span class="job-status unlinked">❌ Not linked</span></td>
+                <td>
+                  <button class="btn-view" onclick="showReceipt('amz1')">👁 View</button>
+                  <button class="btn-assign" onclick="openAssignModal('amz1')">Assign</button>
+                </td>
+              </tr>
+              <tr>
+                <td>Dec 1</td>
+                <td><span class="vendor-badge home-depot">🏠 Home Depot</span></td>
+                <td><strong>$287.45</strong></td>
+                <td><span class="job-status unlinked">❌ Not linked</span></td>
+                <td>
+                  <button class="btn-view" onclick="showReceipt('hd2')">👁 View</button>
+                  <button class="btn-assign" onclick="openAssignModal('hd2')">Assign</button>
+                </td>
+              </tr>
+              <tr>
+                <td>Nov 30</td>
+                <td><span class="vendor-badge ced">⚡ CED</span></td>
+                <td><strong>$78.89</strong></td>
+                <td><span class="job-status unlinked">❌ Not linked</span></td>
+                <td>
+                  <button class="btn-view" onclick="showReceipt('ced1')">👁 View</button>
+                  <button class="btn-assign" onclick="openAssignModal('ced1')">Assign</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        
+        <!-- Jobs Ready to Bill -->
+        <div class="card">
+          <div class="card-header">
+            <h2>💰 Ready to Invoice</h2>
+          </div>
+          <div class="card-body">
+            <ul class="job-list">
+              <li class="job-item">
+                <div>
+                  <div class="name">Smith Residence - Panel</div>
+                  <div class="details">8 expenses • 12 hrs labor</div>
+                </div>
+                <div style="text-align: right;">
+                  <div class="amount">$2,847</div>
+                  <button class="btn-invoice">Create Invoice</button>
+                </div>
+              </li>
+              <li class="job-item">
+                <div>
+                  <div class="name">Jones Kitchen Remodel</div>
+                  <div class="details">3 expenses • 4 hrs labor</div>
+                </div>
+                <div style="text-align: right;">
+                  <div class="amount">$1,245</div>
+                  <button class="btn-invoice">Create Invoice</button>
+                </div>
+              </li>
+              <li class="job-item">
+                <div>
+                  <div class="name">456 Oak St - Service</div>
+                  <div class="details">2 expenses • 2 hrs labor</div>
+                </div>
+                <div style="text-align: right;">
+                  <div class="amount">$800</div>
+                  <button class="btn-invoice">Create Invoice</button>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card">
+          <div class="card-header">
+            <h2>📋 Recent Activity</h2>
+          </div>
+          <div class="card-body">
+            <ul class="activity-feed">
+              <li class="activity-item">
+                <div class="activity-icon receipt">📧</div>
+                <div class="activity-content">
+                  <div class="text">Home Depot receipt <strong>$234.56</strong></div>
+                  <div class="time">2 minutes ago</div>
+                </div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon sync">✓</div>
+                <div class="activity-content">
+                  <div class="text">Synced to QBO: Lowe's $89.99 → Smith Residence</div>
+                  <div class="time">15 minutes ago</div>
+                </div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon receipt">📧</div>
+                <div class="activity-content">
+                  <div class="text">Amazon receipt <strong>$156.43</strong></div>
+                  <div class="time">1 hour ago</div>
+                </div>
+              </li>
+              <li class="activity-item">
+                <div class="activity-icon sync">✓</div>
+                <div class="activity-content">
+                  <div class="text">Invoice created: Jones Kitchen $1,245</div>
+                  <div class="time">3 hours ago</div>
+                </div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="card" style="margin-top: 24px;">
+      <div class="card-header">
+        <h2>⚡ Quick Actions</h2>
+      </div>
+      <div class="quick-actions">
+        <div class="action-btn">
+          <div class="icon">🔄</div>
+          <div class="label">Scan Gmail Now</div>
+        </div>
+        <div class="action-btn">
+          <div class="icon">📱</div>
+          <div class="label">Text Receipt to Bot</div>
+        </div>
+        <div class="action-btn">
+          <div class="icon">🏦</div>
+          <div class="label">Match Bank Feed</div>
+        </div>
+        <div class="action-btn">
+          <div class="icon">📊</div>
+          <div class="label">Weekly Report</div>
+        </div>
+        <div class="action-btn">
+          <div class="icon">⚙️</div>
+          <div class="label">Settings</div>
+        </div>
+        <div class="action-btn">
+          <div class="icon">📋</div>
+          <div class="label">View All Expenses</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Receipt Preview Modal -->
+  <div class="modal-overlay" id="receiptModal" onclick="closeModal(event)">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>📄 Receipt Preview</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="receipt-meta">
+          <div class="receipt-meta-item">
+            <div class="label">Vendor</div>
+            <div class="value" id="modal-vendor">Home Depot</div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="label">Amount</div>
+            <div class="value" id="modal-amount">$234.56</div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="label">Date</div>
+            <div class="value" id="modal-date">Dec 2, 2025</div>
+          </div>
+        </div>
+        <div class="receipt-preview" id="receipt-content">
+THE HOME DEPOT #1808
+4320 DAIRY RD
+KAHULUI, HI 96732
+(808) 893-3650
+
+12/02/2025  10:47 AM
+
+SALE
+
+1 ROMEX 12/2 250FT        $89.97
+1 WIRE NUT YLW 100PK      $12.49
+2 1/2" EMT CONNECTOR       $3.18
+1 4" SQ BOX               $4.92
+3 SINGLE GANG MUD RING    $8.97
+1 20A GFCI OUTLET        $24.97
+2 DUPLEX OUTLET WHT        $3.58
+1 BLANK PLATE              $1.49
+SUBTOTAL                 $149.57
+
+TAX 4.712%                 $7.05
+--------------------------------
+TOTAL                    $156.62
+
+XXXXXXXXXXXX4892 VISA
+AUTH CODE: 847291
+
+THANK YOU FOR SHOPPING
+THE HOME DEPOT
+
+Return Policy: 90 Days
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div>
+          <label style="color: #8b949e; margin-right: 10px;">Assign to Job:</label>
+          <select class="job-select" id="job-select">
+            <option value="">-- Select a Job --</option>
+            <option value="smith">Smith Residence - Panel Upgrade</option>
+            <option value="jones">Jones Kitchen Remodel</option>
+            <option value="oak">456 Oak St - Service Call</option>
+            <option value="wailea">Wailea Residence - New Construction</option>
+            <option value="kihei">Kihei Commercial - TI</option>
+            <option value="new">+ Create New Job...</option>
+          </select>
+        </div>
+        <button class="btn-save" onclick="saveAssignment()">✓ Save & Link to Job</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Sample receipt data
+    const receipts = {
+      hd1: {
+        vendor: 'Home Depot',
+        amount: '$234.56',
+        date: 'Dec 2, 2025',
+        content: `THE HOME DEPOT #1808
+4320 DAIRY RD
+KAHULUI, HI 96732
+(808) 893-3650
+
+12/02/2025  10:47 AM
+
+SALE
+
+1 ROMEX 12/2 250FT        $89.97
+1 WIRE NUT YLW 100PK      $12.49
+2 1/2" EMT CONNECTOR       $3.18
+1 4" SQ BOX               $4.92
+3 SINGLE GANG MUD RING    $8.97
+1 20A GFCI OUTLET        $24.97
+2 DUPLEX OUTLET WHT        $3.58
+1 BLANK PLATE              $1.49
+--------------------------------
+SUBTOTAL                 $149.57
+TAX 4.712%                $11.07
+--------------------------------
+TOTAL                    $234.56
+
+XXXXXXXXXXXX4892 VISA
+AUTH CODE: 847291`
+      },
+      lowes1: {
+        vendor: "Lowe's",
+        amount: '$89.99',
+        date: 'Dec 2, 2025',
+        content: `LOWE'S #2504
+180 HANA HWY
+KAHULUI HI 96732
+808-877-6500
+
+12/02/2025 2:34 PM
+
+1 KLEIN WIRE STRIPPER     $29.97
+1 3/4 PVC CONDUIT 10FT     $8.47
+2 PVC COUPLING 3/4         $1.98
+1 WEATHERPROOF BOX        $14.97
+1 IN-USE COVER            $12.97
+1 OUTDOOR GFCI 20A        $21.63
+--------------------------------
+SUBTOTAL                  $89.99
+TAX                        $0.00
+--------------------------------
+TOTAL                     $89.99
+
+VISA ***4892
+APPROVAL: 293847`
+      },
+      amz1: {
+        vendor: 'Amazon',
+        amount: '$156.43',
+        date: 'Dec 1, 2025',
+        content: `AMAZON.COM ORDER
+
+Order #112-4847291-9283746
+December 1, 2025
+
+Ship To: Bobby Turner
+         RLT Systems LLC
+
+Items Ordered:
+----------------------------------------
+Klein Tools 11061 Wire Stripper
+  Qty: 1         Price: $32.97
+
+Milwaukee 48-22-3079 Wire Gauge
+  Qty: 1         Price: $24.97
+
+Fluke 323 True-RMS Clamp Meter
+  Qty: 1         Price: $89.99
+
+----------------------------------------
+Items Subtotal:          $147.93
+Shipping:                  $0.00
+Tax:                       $8.50
+----------------------------------------
+Order Total:            $156.43
+
+Payment: Visa ending in 4892`
+      },
+      hd2: {
+        vendor: 'Home Depot',
+        amount: '$287.45',
+        date: 'Dec 1, 2025',
+        content: `THE HOME DEPOT #1808
+4320 DAIRY RD
+KAHULUI, HI 96732
+
+12/01/2025  8:15 AM
+
+1 200A MAIN BREAKER      $189.00
+1 GROUNDING ROD 8FT       $24.97
+1 #6 BARE COPPER 25FT     $42.97
+1 GROUND CLAMP             $8.97
+2 WIRE NUT RED 100PK       $7.98
+--------------------------------
+SUBTOTAL                 $273.89
+TAX 4.712%                $13.56
+--------------------------------
+TOTAL                    $287.45
+
+VISA ***4892`
+      },
+      ced1: {
+        vendor: 'CED',
+        amount: '$78.89',
+        date: 'Nov 30, 2025',
+        content: `CONSOLIDATED ELECTRICAL
+DISTRIBUTORS
+75 LONO AVE #304
+KAHULUI HI 96732
+
+INVOICE #847291
+Date: 11/30/2025
+
+Customer: RLT SYSTEMS LLC
+
+Qty  Description          Price
+----------------------------------------
+4    3/4" EMT 10FT        $31.96
+2    3/4" SET SCREW CONN   $4.98
+2    3/4" SET SCREW COUP   $3.98
+1    4-11/16 SQ BOX       $12.97
+2    BLANK 4-11/16 COVER   $5.98
+----------------------------------------
+SUBTOTAL                  $59.87
+TAX                       $19.02
+----------------------------------------
+TOTAL DUE                 $78.89
+
+Terms: Net 30
+PO#: VERBAL-BOBBY`
+      }
+    };
+
+    function showReceipt(id) {
+      const receipt = receipts[id];
+      if (!receipt) return;
+      
+      document.getElementById('modal-vendor').textContent = receipt.vendor;
+      document.getElementById('modal-amount').textContent = receipt.amount;
+      document.getElementById('modal-date').textContent = receipt.date;
+      document.getElementById('receipt-content').textContent = receipt.content;
+      document.getElementById('receiptModal').classList.add('active');
+    }
+
+    function openAssignModal(id) {
+      showReceipt(id);
+    }
+
+    function closeModal(event) {
+      if (!event || event.target.classList.contains('modal-overlay')) {
+        document.getElementById('receiptModal').classList.remove('active');
+      }
+    }
+
+    function saveAssignment() {
+      const job = document.getElementById('job-select').value;
+      if (!job) {
+        alert('Please select a job');
+        return;
+      }
+      if (job === 'new') {
+        alert('Create New Job feature coming soon!');
+        return;
+      }
+      alert('✓ Receipt linked to job successfully!\n\nThis expense will now appear in the job billing.');
+      closeModal();
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+    });
+  </script>
+</body>
+</html>
+

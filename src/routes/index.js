@@ -4,9 +4,17 @@
 
 const express = require('express');
 const router = express.Router();
+const path = require('path');
 const scheduler = require('../services/scheduler');
 const { client: qboClient } = require('../services/quickbooks');
 const logger = require('../utils/logger');
+
+/**
+ * New Dashboard Mockup
+ */
+router.get('/dashboard-new', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard-mockup.html'));
+});
 
 /**
  * Home route - Dashboard
@@ -135,6 +143,7 @@ router.get('/', (req, res) => {
       
       <div class="card">
         <h2>🎮 Controls</h2>
+        <a href="/dashboard" class="btn btn-primary" style="background: #58a6ff;">📊 New Dashboard</a>
         <a href="/api/run" class="btn btn-success">Run Now</a>
         <a href="/api/status" class="btn btn-secondary">API Status</a>
         <a href="/health" class="btn btn-secondary">Health Check</a>

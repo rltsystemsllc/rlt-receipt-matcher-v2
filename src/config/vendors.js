@@ -122,10 +122,10 @@ const vendors = {
     emailPatterns: [
       /read\s*lighting/i,
       /readlighting/i,
-      /rlt/i,
       /@readlighting\./i
+      // Removed /rlt/i - too broad, matches RLT Systems outbound invoices
     ],
-    receiptType: 'pdf', // Adjust based on how receipts typically come
+    receiptType: 'pdf',
     qboVendorName: 'Read Lighting',
     category: 'Job Supplies',
     extractors: {
@@ -134,6 +134,25 @@ const vendors = {
       invoiceNumber: /(?:invoice\s*#?|inv\s*#?)[:\s]*(\w+)/i,
       orderNumber: /(?:order\s*#?|P\.?O\.?)[:\s]*(\w+)/i,
       cardLast4: /(?:card|visa|mastercard|amex)[^\d]*(\d{4})/i
+    }
+  },
+
+  'railway': {
+    name: 'Railway',
+    displayName: 'Railway',
+    emailPatterns: [
+      /railway\.app/i,
+      /railway\s*corporation/i,
+      /from\s*railway/i,
+      /@railway\./i
+    ],
+    receiptType: 'pdf',
+    qboVendorName: 'Railway',
+    category: 'Software & Subscriptions',
+    extractors: {
+      total: /(?:total|amount)[:\s]*\$?([\d,]+\.?\d*)/i,
+      date: /(?:date|invoice\s*date)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
+      invoiceNumber: /(?:invoice\s*#?|#)[:\s]*([\w\-]+)/i
     }
   }
 };

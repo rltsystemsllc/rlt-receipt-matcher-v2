@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bot 1 Dashboard - RLT Receipt Matcher</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+      padding: 24px;
+    }
+    
+    .container { max-width: 1400px; margin: 0 auto; }
+    
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid #30363d;
+    }
+    
+    h1 { font-size: 1.8rem; font-weight: 600; color: #58a6ff; }
+    .subtitle { color: #8b949e; font-size: 0.9rem; margin-top: 4px; }
+    
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: rgba(35, 134, 54, 0.2);
+      color: #3fb950;
+    }
+    .status-pill .dot { 
+      width: 8px; height: 8px; border-radius: 50%; 
+      background: currentColor; animation: pulse 2s infinite; 
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    
+    .alert-banner {
+      background: linear-gradient(135deg, rgba(187, 128, 9, 0.15) 0%, rgba(187, 128, 9, 0.05) 100%);
+      border: 1px solid rgba(187, 128, 9, 0.4);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .alert-banner.hidden { display: none; }
+    .alert-banner .message { display: flex; align-items: center; gap: 12px; }
+    .alert-banner .icon { font-size: 1.5rem; }
+    .alert-banner h3 { color: #d29922; font-size: 1rem; }
+    .alert-banner p { color: #8b949e; font-size: 0.85rem; }
+    .alert-banner .amount { font-size: 1.8rem; font-weight: 700; color: #d29922; }
+    
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .metric-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .metric-card .label { color: #8b949e; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .metric-card .value { font-size: 2rem; font-weight: 700; margin: 8px 0 4px; }
+    .metric-card .subtext { color: #8b949e; font-size: 0.85rem; }
+    .metric-card.danger .value { color: #f85149; }
+    .metric-card.warning .value { color: #d29922; }
+    .metric-card.success .value { color: #3fb950; }
+    .metric-card.info .value { color: #58a6ff; }
+    
+    .main-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 24px;
+    }
+    
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-header h2 { font-size: 1rem; font-weight: 600; }
+    .card-body { padding: 0; }
+    
+    .expense-table { width: 100%; border-collapse: collapse; }
+    .expense-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #8b949e;
+      background: #0d1117;
+    }
+    .expense-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #21262d;
+      vertical-align: middle;
+    }
+    .expense-table tr:hover { background: rgba(56, 139, 253, 0.05); }
+    
+    .vendor-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+    .vendor-badge.home-depot { background: rgba(247, 106, 12, 0.15); color: #f76a0c; }
+    .vendor-badge.lowes { background: rgba(0, 75, 141, 0.2); color: #58a6ff; }
+    .vendor-badge.amazon { background: rgba(255, 153, 0, 0.15); color: #ff9900; }
+    .vendor-badge.ced { background: rgba(76, 175, 80, 0.15); color: #4caf50; }
+    .vendor-badge.default { background: rgba(139, 148, 158, 0.15); color: #8b949e; }
+    
+    .job-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+    .job-status.linked { background: rgba(35, 134, 54, 0.15); color: #3fb950; }
+    .job-status.unlinked { background: rgba(248, 81, 73, 0.15); color: #f85149; }
+    
+    .btn {
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    .btn-view {
+      background: #30363d;
+      color: #58a6ff;
+      border: 1px solid #58a6ff;
+      margin-right: 6px;
+    }
+    .btn-view:hover { background: #58a6ff; color: #0d1117; }
+    .btn-assign { background: #238636; color: white; }
+    .btn-assign:hover { background: #2ea043; }
+    .btn-invoice { background: #58a6ff; color: #0d1117; padding: 8px 16px; font-weight: 600; }
+    .btn-invoice:hover { background: #79b8ff; }
+    
+    .job-list { list-style: none; }
+    .job-item {
+      padding: 16px 20px;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .job-item:last-child { border-bottom: none; }
+    .job-item .name { font-weight: 500; }
+    .job-item .details { color: #8b949e; font-size: 0.85rem; margin-top: 4px; }
+    .job-item .amount { font-size: 1.1rem; font-weight: 600; color: #3fb950; }
+    
+    .activity-feed { list-style: none; }
+    .activity-item {
+      padding: 14px 20px;
+      border-bottom: 1px solid #21262d;
+      display: flex;
+      gap: 12px;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+    .activity-icon.receipt { background: rgba(88, 166, 255, 0.15); }
+    .activity-icon.assigned { background: rgba(35, 134, 54, 0.15); }
+    .activity-content { flex: 1; }
+    .activity-content .text { font-size: 0.9rem; }
+    .activity-content .time { color: #8b949e; font-size: 0.8rem; margin-top: 2px; }
+    
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: #8b949e;
+    }
+    .empty-state .icon { font-size: 2rem; margin-bottom: 10px; }
+    
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      max-width: 900px;
+      width: 95%;
+      max-height: 90vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #30363d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h3 { margin: 0; color: #58a6ff; }
+    .modal-close {
+      background: none;
+      border: none;
+      color: #8b949e;
+      font-size: 1.5rem;
+      cursor: pointer;
+    }
+    .modal-close:hover { color: #f85149; }
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .receipt-preview {
+      background: #fff;
+      color: #000;
+      padding: 24px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    .receipt-meta {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .receipt-meta-item {
+      background: #21262d;
+      padding: 12px;
+      border-radius: 8px;
+    }
+    .receipt-meta-item .label { color: #8b949e; font-size: 0.75rem; text-transform: uppercase; }
+    .receipt-meta-item .value { color: #e6edf3; font-size: 1.1rem; font-weight: 600; margin-top: 4px; }
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid #30363d;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .job-select {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      min-width: 250px;
+    }
+    .btn-save {
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-save:hover { background: #2ea043; }
+    
+    .loading { opacity: 0.5; pointer-events: none; }
+    
+    .view-toggle {
+      display: flex;
+      gap: 8px;
+    }
+    .toggle-btn {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .toggle-btn:hover { background: #30363d; }
+    .toggle-btn.active {
+      background: #58a6ff;
+      color: #0d1117;
+      border-color: #58a6ff;
+    }
+    
+    .btn-rescan {
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .btn-rescan:hover { background: #2ea043; }
+    .btn-rescan:disabled { background: #30363d; cursor: not-allowed; }
+    
+    .btn-sync {
+      background: #58a6ff;
+      color: #0d1117;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .btn-sync:hover { background: #79b8ff; }
+    .btn-sync:disabled { background: #30363d; color: #8b949e; cursor: not-allowed; }
+    
+    @media (max-width: 900px) {
+      .metrics { grid-template-columns: repeat(2, 1fr); }
+      .main-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>⚡ RLT Receipt Matcher</h1>
+        <p class="subtitle">Bot 1 • Expense Tracking Dashboard</p>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <button class="btn-rescan" onclick="rescanReceipts()" id="rescan-btn">🔄 Rescan PDFs</button>
+        <button class="btn-sync" onclick="syncToQbo()" id="sync-btn">📤 Sync to QBO</button>
+        <div class="status-pill">
+          <span class="dot"></span>
+          <span id="status-text">Running</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="alert-banner" id="alert-banner">
+      <div class="message">
+        <span class="icon">⚠️</span>
+        <div>
+          <h3 id="alert-title">Loading...</h3>
+          <p>Assign jobs to enable billing</p>
+        </div>
+      </div>
+      <div class="amount" id="alert-amount">$0</div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric-card danger">
+        <div class="label">Unassigned</div>
+        <div class="value" id="stat-unassigned">$0</div>
+        <div class="subtext" id="stat-unassigned-count">0 expenses need jobs</div>
+      </div>
+      <div class="metric-card warning">
+        <div class="label">This Week</div>
+        <div class="value" id="stat-week">$0</div>
+        <div class="subtext" id="stat-week-count">0 receipts processed</div>
+      </div>
+      <div class="metric-card success">
+        <div class="label">Ready to Bill</div>
+        <div class="value" id="stat-ready">$0</div>
+        <div class="subtext" id="stat-ready-count">0 jobs complete</div>
+      </div>
+      <div class="metric-card info">
+        <div class="label">Total Processed</div>
+        <div class="value" id="stat-total">0</div>
+        <div class="subtext">All time</div>
+      </div>
+    </div>
+
+    <div class="main-grid">
+      <div class="card">
+        <div class="card-header">
+          <h2>🔴 Expenses Needing Job Assignment</h2>
+          <span style="color: #8b949e; font-size: 0.85rem;">Click to assign</span>
+        </div>
+        <div class="card-body">
+          <table class="expense-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Vendor</th>
+                <th>Amount</th>
+                <th>Job</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="expenses-table">
+              <tr>
+                <td colspan="5">
+                  <div class="empty-state">
+                    <div class="icon">📭</div>
+                    <div>Loading expenses...</div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        <div class="card">
+          <div class="card-header">
+            <h2>💰 Ready to Invoice</h2>
+          </div>
+          <div class="card-body">
+            <ul class="job-list" id="jobs-ready">
+              <li class="empty-state">
+                <div class="icon">📋</div>
+                <div>No jobs ready yet</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2>📋 Recent Activity</h2>
+          </div>
+          <div class="card-body">
+            <ul class="activity-feed" id="activity-feed">
+              <li class="empty-state">
+                <div class="icon">⏳</div>
+                <div>No recent activity</div>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Receipt Preview Modal -->
+  <div class="modal-overlay" id="receiptModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>📄 Receipt Preview</h3>
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="receipt-meta">
+          <div class="receipt-meta-item">
+            <div class="label">Vendor</div>
+            <div class="value" id="modal-vendor">-</div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="label">Amount</div>
+            <div class="value" id="modal-amount">-</div>
+          </div>
+          <div class="receipt-meta-item">
+            <div class="label">Date</div>
+            <div class="value" id="modal-date">-</div>
+          </div>
+        </div>
+        <div class="view-toggle" id="view-toggle" style="margin-bottom: 12px;">
+          <button class="toggle-btn active" id="btn-pdf" onclick="showPdfView()">📄 PDF</button>
+          <button class="toggle-btn" id="btn-text" onclick="showTextView()">📝 Text</button>
+        </div>
+        <div id="pdf-view" style="display: block;">
+          <iframe id="pdf-frame" style="width: 100%; height: 500px; border: none; border-radius: 8px; background: #fff;"></iframe>
+          <div id="pdf-fallback" style="display: none; padding: 20px; text-align: center; color: #8b949e;">
+            No PDF available - showing extracted text
+          </div>
+        </div>
+        <div class="receipt-preview" id="receipt-content" style="display: none;">Loading...</div>
+      </div>
+      <div class="modal-footer">
+        <div>
+          <label style="color: #8b949e; margin-right: 10px;">Assign to Job:</label>
+          <select class="job-select" id="job-select">
+            <option value="">-- Select a Job --</option>
+          </select>
+        </div>
+        <button class="btn-save" onclick="saveAssignment()">✓ Save & Link to Job</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentReceiptId = null;
+    let jobs = [];
+
+    // Load dashboard data
+    async function loadDashboard() {
+      try {
+        const response = await fetch('/dashboard/api/data');
+        const data = await response.json();
+        
+        if (data.success) {
+          updateStats(data.stats);
+          updateExpensesTable(data.unassigned);
+          updateJobsReady(data.jobsReady);
+          updateActivityFeed(data.recentActivity);
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard:', error);
+      }
+    }
+
+    // Load available jobs
+    async function loadJobs() {
+      try {
+        const response = await fetch('/dashboard/api/jobs');
+        const data = await response.json();
+        
+        if (data.success) {
+          jobs = data.jobs;
+          updateJobSelect();
+        }
+      } catch (error) {
+        console.error('Failed to load jobs:', error);
+      }
+    }
+
+    function updateStats(stats) {
+      document.getElementById('stat-unassigned').textContent = '$' + formatNumber(stats.unassignedAmount);
+      document.getElementById('stat-unassigned-count').textContent = stats.unassignedCount + ' expenses need jobs';
+      document.getElementById('stat-week').textContent = '$' + formatNumber(stats.thisWeekAmount);
+      document.getElementById('stat-week-count').textContent = stats.thisWeekCount + ' receipts processed';
+      document.getElementById('stat-ready').textContent = '$' + formatNumber(stats.jobsReadyAmount);
+      document.getElementById('stat-ready-count').textContent = stats.jobsReadyCount + ' jobs complete';
+      document.getElementById('stat-total').textContent = stats.totalReceipts;
+
+      // Update alert banner
+      const banner = document.getElementById('alert-banner');
+      if (stats.unassignedCount > 0) {
+        banner.classList.remove('hidden');
+        document.getElementById('alert-title').textContent = stats.unassignedCount + ' expenses need job assignment';
+        document.getElementById('alert-amount').textContent = '$' + formatNumber(stats.unassignedAmount);
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function updateExpensesTable(expenses) {
+      const tbody = document.getElementById('expenses-table');
+      
+      if (expenses.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5">
+              <div class="empty-state">
+                <div class="icon">✅</div>
+                <div>All expenses are assigned to jobs!</div>
+              </div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = expenses.map(exp => `
+        <tr>
+          <td>${formatDate(exp.date)}</td>
+          <td><span class="vendor-badge ${getVendorClass(exp.vendor)}">${getVendorIcon(exp.vendor)} ${exp.vendor}</span></td>
+          <td><strong>$${formatNumber(exp.amount)}</strong></td>
+          <td><span class="job-status unlinked">❌ Not linked</span></td>
+          <td>
+            <button class="btn btn-view" onclick="viewReceipt('${exp.id}')">👁 View</button>
+            <button class="btn btn-assign" onclick="viewReceipt('${exp.id}')">Assign</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function updateJobsReady(jobsReady) {
+      const list = document.getElementById('jobs-ready');
+      
+      if (jobsReady.length === 0) {
+        list.innerHTML = `
+          <li class="empty-state">
+            <div class="icon">📋</div>
+            <div>Assign expenses to jobs to see them here</div>
+          </li>
+        `;
+        return;
+      }
+
+      list.innerHTML = jobsReady.map(job => `
+        <li class="job-item">
+          <div>
+            <div class="name">${job.jobName}</div>
+            <div class="details">${job.expenseCount} expenses</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="amount">$${formatNumber(job.totalAmount)}</div>
+            <button class="btn btn-invoice">Create Invoice</button>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    function updateActivityFeed(activity) {
+      const feed = document.getElementById('activity-feed');
+      
+      if (activity.length === 0) {
+        feed.innerHTML = `
+          <li class="empty-state">
+            <div class="icon">⏳</div>
+            <div>No recent activity</div>
+          </li>
+        `;
+        return;
+      }
+
+      feed.innerHTML = activity.slice(0, 5).map(item => `
+        <li class="activity-item">
+          <div class="activity-icon ${item.type}">${item.type === 'assigned' ? '✓' : '📧'}</div>
+          <div class="activity-content">
+            <div class="text">
+              ${item.type === 'assigned' 
+                ? `Assigned to: ${item.jobName}` 
+                : `${item.vendor} receipt`} 
+              <strong>$${formatNumber(item.amount)}</strong>
+            </div>
+            <div class="time">${formatTime(item.timestamp)}</div>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    function updateJobSelect() {
+      const select = document.getElementById('job-select');
+      select.innerHTML = `
+        <option value="">-- Select a Job --</option>
+        ${jobs.map(job => `<option value="${job.name}">${job.name}</option>`).join('')}
+        <option value="__new__">+ Create New Job...</option>
+      `;
+    }
+
+    let currentReceiptHasPdf = false;
+
+    async function viewReceipt(id) {
+      currentReceiptId = id;
+      
+      try {
+        const response = await fetch(`/dashboard/api/receipt/${id}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          const receipt = data.receipt;
+          document.getElementById('modal-vendor').textContent = receipt.vendor;
+          document.getElementById('modal-amount').textContent = '$' + formatNumber(receipt.amount);
+          document.getElementById('modal-date').textContent = formatDate(receipt.date);
+          document.getElementById('receipt-content').textContent = receipt.rawContent || 'No receipt content available';
+          
+          // Check if PDF is available
+          currentReceiptHasPdf = !!receipt.pdfAttachment;
+          
+          if (currentReceiptHasPdf) {
+            document.getElementById('pdf-frame').src = `/dashboard/api/receipt/${id}/pdf`;
+            document.getElementById('pdf-fallback').style.display = 'none';
+            document.getElementById('pdf-frame').style.display = 'block';
+            document.getElementById('view-toggle').style.display = 'flex';
+            showPdfView();
+          } else {
+            document.getElementById('pdf-frame').src = '';
+            document.getElementById('pdf-fallback').style.display = 'block';
+            document.getElementById('pdf-frame').style.display = 'none';
+            document.getElementById('view-toggle').style.display = 'none';
+            showTextView();
+          }
+          
+          document.getElementById('receiptModal').classList.add('active');
+        }
+      } catch (error) {
+        alert('Failed to load receipt: ' + error.message);
+      }
+    }
+
+    function showPdfView() {
+      document.getElementById('pdf-view').style.display = 'block';
+      document.getElementById('receipt-content').style.display = 'none';
+      document.getElementById('btn-pdf').classList.add('active');
+      document.getElementById('btn-text').classList.remove('active');
+    }
+
+    function showTextView() {
+      document.getElementById('pdf-view').style.display = 'none';
+      document.getElementById('receipt-content').style.display = 'block';
+      document.getElementById('btn-pdf').classList.remove('active');
+      document.getElementById('btn-text').classList.add('active');
+    }
+
+    function closeModal() {
+      document.getElementById('receiptModal').classList.remove('active');
+      currentReceiptId = null;
+    }
+
+    async function saveAssignment() {
+      const jobName = document.getElementById('job-select').value;
+      
+      if (!jobName) {
+        alert('Please select a job');
+        return;
+      }
+
+      if (jobName === '__new__') {
+        const newJobName = prompt('Enter new job name:');
+        if (!newJobName) return;
+        
+        // Create the job first
+        await fetch('/dashboard/api/jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newJobName })
+        });
+        
+        // Then assign
+        await assignReceipt(newJobName);
+        await loadJobs();
+      } else {
+        await assignReceipt(jobName);
+      }
+    }
+
+    async function assignReceipt(jobName) {
+      try {
+        const response = await fetch(`/dashboard/api/receipt/${currentReceiptId}/assign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobName })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          closeModal();
+          loadDashboard();
+        } else {
+          alert('Failed to assign: ' + data.error);
+        }
+      } catch (error) {
+        alert('Failed to assign receipt: ' + error.message);
+      }
+    }
+
+    // Helpers
+    function formatNumber(num) {
+      return (num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    function formatTime(timestamp) {
+      if (!timestamp) return '-';
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diff = now - date;
+      
+      if (diff < 60000) return 'Just now';
+      if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + ' hours ago';
+      return formatDate(timestamp);
+    }
+
+    function getVendorClass(vendor) {
+      const v = (vendor || '').toLowerCase();
+      if (v.includes('home depot')) return 'home-depot';
+      if (v.includes('lowe')) return 'lowes';
+      if (v.includes('amazon')) return 'amazon';
+      if (v.includes('ced')) return 'ced';
+      return 'default';
+    }
+
+    function getVendorIcon(vendor) {
+      const v = (vendor || '').toLowerCase();
+      if (v.includes('home depot')) return '🏠';
+      if (v.includes('lowe')) return '🔧';
+      if (v.includes('amazon')) return '📦';
+      if (v.includes('ced')) return '⚡';
+      return '🧾';
+    }
+
+    // Close modal on escape
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeModal();
+    });
+
+    // Click outside modal to close
+    document.getElementById('receiptModal').addEventListener('click', e => {
+      if (e.target.classList.contains('modal-overlay')) closeModal();
+    });
+
+    // Rescan receipts to capture PDFs
+    async function rescanReceipts() {
+      const btn = document.getElementById('rescan-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Rescanning...';
+      
+      try {
+        const response = await fetch('/dashboard/api/rescan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ afterDate: '2025-10-15' })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert(`Rescan complete!\n\n${data.unmarked} receipts rescanned\n${data.newReceipts} PDFs captured`);
+          loadDashboard();
+        } else {
+          alert('Rescan failed: ' + data.error);
+        }
+      } catch (error) {
+        alert('Rescan error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔄 Rescan PDFs';
+      }
+    }
+
+    async function syncToQbo() {
+      const btn = document.getElementById('sync-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Syncing...';
+      
+      try {
+        const response = await fetch('/dashboard/api/sync-qbo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ afterDate: '2025-10-15' })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          alert(`QBO Sync Complete!\n\n✅ ${data.synced} receipts synced to QuickBooks\n❌ ${data.failed} failed\n⏭️ ${data.skipped} skipped (already synced)`);
+          loadDashboard();
+        } else {
+          alert('Sync failed: ' + data.error);
+        }
+      } catch (error) {
+        alert('Sync error: ' + error.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '📤 Sync to QBO';
+      }
+    }
+
+    // Initial load
+    loadDashboard();
+    loadJobs();
+
+    // Refresh every 30 seconds
+    setInterval(loadDashboard, 30000);
+  </script>
+</body>
+</html>
+

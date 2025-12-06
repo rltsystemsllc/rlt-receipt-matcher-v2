@@ -27,13 +27,7 @@ class HomeDepotParser {
       };
 
       // Home Depot specific patterns
-      // Order Total
-      const totalMatch = text.match(/(?:order\s*total|total)[:\s]*\$?([\d,]+\.?\d*)/i);
-      if (totalMatch) {
-        result.total = parseCurrency(totalMatch[1]);
-      }
-
-      // Subtotal
+      // Subtotal (parse first so we don't confuse it with total)
       const subtotalMatch = text.match(/subtotal[:\s]*\$?([\d,]+\.?\d*)/i);
       if (subtotalMatch) {
         result.subtotal = parseCurrency(subtotalMatch[1]);
@@ -43,6 +37,47 @@ class HomeDepotParser {
       const taxMatch = text.match(/(?:sales\s*)?tax[:\s]*\$?([\d,]+\.?\d*)/i);
       if (taxMatch) {
         result.tax = parseCurrency(taxMatch[1]);
+      }
+
+      // Order Total - look for specific total patterns, NOT subtotal
+      // Try multiple patterns in order of specificity
+      const totalPatterns = [
+        /order\s*total[:\s]*\$?([\d,]+\.?\d*)/i,           // "Order Total: $XX.XX"
+        /grand\s*total[:\s]*\$?([\d,]+\.?\d*)/i,           // "Grand Total: $XX.XX"
+        /payment\s*total[:\s]*\$?([\d,]+\.?\d*)/i,         // "Payment Total: $XX.XX"
+        /total\s*charged[:\s]*\$?([\d,]+\.?\d*)/i,         // "Total Charged: $XX.XX"
+        /(?:^|[^ub])total[:\s]*\$?([\d,]+\.?\d*)/im,       // "Total: $XX.XX" but not subtotal
+      ];
+
+      for (const pattern of totalPatterns) {
+        const match = text.match(pattern);
+        if (match) {
+          const amount = parseCurrency(match[1]);
+          // Make sure it's greater than subtotal (it should include tax)
+          if (amount && (!result.subtotal || amount >= result.subtotal)) {
+            result.total = amount;
+            break;
+          }
+        }
+      }
+
+      // Fallback: if we have subtotal and tax but no total, calculate it
+      if (!result.total && result.subtotal && result.tax) {
+        result.total = Math.round((result.subtotal + result.tax) * 100) / 100;
+        logger.info('Home Depot: calculated total from subtotal + tax', {
+          subtotal: result.subtotal,
+          tax: result.tax,
+          total: result.total
+        });
+      }
+
+      // Another fallback: if we only have subtotal and no total, use subtotal
+      // but log a warning
+      if (!result.total && result.subtotal) {
+        result.total = result.subtotal;
+        logger.warn('Home Depot: using subtotal as total (tax may be missing)', {
+          subtotal: result.subtotal
+        });
       }
 
       // Order Date - Home Depot format

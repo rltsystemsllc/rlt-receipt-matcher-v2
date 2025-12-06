@@ -28,18 +28,26 @@ function parseDate(dateStr) {
 
   for (const format of formats) {
     const parsed = dayjs(dateStr, format, true);
-    if (parsed.isValid()) {
+    if (parsed.isValid() && isReasonableDate(parsed)) {
       return parsed.format('YYYY-MM-DD');
     }
   }
 
   // Try native parsing as fallback
   const native = dayjs(dateStr);
-  if (native.isValid()) {
+  if (native.isValid() && isReasonableDate(native)) {
     return native.format('YYYY-MM-DD');
   }
 
   return null;
+}
+
+/**
+ * Check if a date is within a reasonable range for receipts (2020-2030)
+ */
+function isReasonableDate(date) {
+  const year = date.year();
+  return year >= 2020 && year <= 2030;
 }
 
 /**
