@@ -37,6 +37,7 @@
     "googleapis": "^128.0.0",
     "intuit-oauth": "^4.0.0",
     "node-cron": "^3.0.3",
+    "openai": "^4.20.0",
     "pdf-parse": "^1.1.1",
     "pdfkit": "^0.14.0",
     "tesseract.js": "^5.0.4",

@@ -36,6 +36,10 @@ const bot2Routes = require('./routes/bot2');
 const bot3Routes = require('./routes/bot3');
 const licenseRoutes = require('./routes/license');
 const dashboardRoutes = require('./routes/dashboard');
+const smartReceiptRoutes = require('./routes/smart-receipt');
+
+// Smart Receipt Bot
+const smartReceiptBot = require('./smart-receipt-bot');
 
 // Create Express app
 const app = express();
@@ -58,6 +62,7 @@ app.use('/bot2', bot2Routes);
 app.use('/bot3', bot3Routes);
 app.use('/license', licenseRoutes);
 app.use('/dashboard', dashboardRoutes);
+app.use('/smart-receipt', smartReceiptRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {
@@ -119,11 +124,18 @@ async function start() {
     logger.info('');
     logger.info('📋 LICENSE HELPER TOOL');
     logger.info(`   Dashboard: http://localhost:${config.port}/license`);
+    logger.info('');
+    logger.info('🤖 SMART RECEIPT BOT (NEW!)');
+    logger.info(`   Dashboard: http://localhost:${config.port}/smart-receipt`);
+    logger.info(`   SMS Webhook: http://localhost:${config.port}/smart-receipt/webhook/sms`);
     logger.info('='.repeat(60));
   });
 
-  // Start Bot 1 scheduler (receipt processing)
+  // Start Bot 1 scheduler (receipt processing) - OLD
   scheduler.start();
+  
+  // Start Smart Receipt Bot (NEW - simplified SMS-based categorization)
+  smartReceiptBot.start();
   
   // Start Bot 2 scheduler (invoice drafting)
   bot2.start();
