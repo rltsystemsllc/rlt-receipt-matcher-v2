@@ -39,7 +39,6 @@
     "node-cron": "^3.0.3",
     "pdf-parse": "^1.1.1",
     "pdfkit": "^0.14.0",
-    "puppeteer": "^21.6.0",
     "tesseract.js": "^5.0.4",
     "winston": "^3.11.0",
     "uuid": "^9.0.1",
