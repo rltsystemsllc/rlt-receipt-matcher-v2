@@ -310,7 +310,7 @@ router.get('/', async (req, res) => {
             <h2><span class="icon">📱</span> SMS Webhook Configuration</h2>
             <p>Configure this webhook URL in RingCentral to receive SMS messages:</p>
             <div class="webhook-url">
-              ${req.protocol}://${req.get('host')}/bot3/webhook/sms
+              ${req.get('host').includes('localhost') ? 'http' : 'https'}://${req.get('host')}/bot3/webhook/sms
             </div>
             <div class="actions" style="margin-top: 15px;">
               <button onclick="setupWebhook()" class="btn btn-primary" id="webhookBtn">
@@ -583,13 +583,11 @@ router.post('/api/inventory/:jobName/billed', async (req, res) => {
  */
 router.post('/api/setup-webhook', async (req, res) => {
   try {
-    // Always use HTTPS for production webhooks
+    // Always use HTTPS for production webhooks (Railway uses HTTPS)
     const host = req.get('host');
-    const isProduction = host && !host.includes('localhost');
-    const protocol = isProduction ? 'https' : 'http';
-    const baseUrl = `${protocol}://${host}`;
-    
-    const webhookUrl = `${baseUrl}/bot3/webhook/sms`;
+    // Force HTTPS for any non-localhost deployment
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const webhookUrl = `${protocol}://${host}/bot3/webhook/sms`;
     
     const result = await ringcentralService.setupWebhook(webhookUrl);
     
