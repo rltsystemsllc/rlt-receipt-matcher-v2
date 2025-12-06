@@ -125,7 +125,7 @@ async function sendSMS(to, message) {
 
   try {
     const response = await plt.post('/restapi/v1.0/account/~/extension/~/sms', {
-      from: { phoneNumber: config.ringcentral.fromNumber },
+      from: { phoneNumber: config.ringcentral.botPhone },
       to: [{ phoneNumber: to }],
       text: message
     });
