@@ -10,7 +10,39 @@ const smartReceiptBot = require('../smart-receipt-bot');
 const qboMonitor = require('../smart-receipt-bot/qbo-monitor');
 const groupSMS = require('../smart-receipt-bot/group-sms');
 const openaiParser = require('../smart-receipt-bot/openai-parser');
+const dataQABot = require('../services/data-qa-bot');
+const ringcentral = require('../bot2/ringcentral');
 const logger = require('../utils/logger');
+
+/**
+ * Check if a message is a question for the Data Q&A Bot
+ */
+function isDataQuestion(text) {
+  if (!text) return false;
+  const questionPatterns = [
+    /cash/i, /bank/i, /balance/i, /money/i,
+    /ar\b/i, /receivable/i, /owed/i, /owes/i, /who owes/i,
+    /overdue/i, /late/i, /past due/i,
+    /revenue/i, /billed/i, /invoiced/i,
+    /this week/i, /last week/i,
+    /collected/i, /payments/i, /paid/i,
+    /margin/i, /profit/i, /gross/i,
+    /expense/i, /spent/i, /spending/i,
+    /runway/i, /survive/i,
+    /wins/i, /winning/i, /progress/i,
+    /credit card/i, /amex/i, /card balance/i,
+    /summary/i, /overview/i, /scorecard/i, /numbers/i,
+    /system/i, /process/i, /automate/i,
+    /grow/i, /scale/i,
+    /delegate/i, /hire/i, /help/i,
+    /client/i, /customer/i,
+    /sales/i, /marketing/i,
+    /focus/i, /priority/i,
+    /why/i, /purpose/i,
+    /\?$/  // Ends with question mark
+  ];
+  return questionPatterns.some(p => p.test(text));
+}
 
 /**
  * Dashboard for Smart Receipt Bot
@@ -128,6 +160,10 @@ router.get('/', async (req, res) => {
               <button class="btn btn-success" onclick="sendSummary()">📱 Send Summary to Group</button>
               <button class="btn btn-warning" onclick="testSMS()">🧪 Test Group SMS</button>
             </div>
+            <div class="actions" style="margin-top: 10px;">
+              <button class="btn btn-primary" onclick="setupWebhook()">📥 Setup SMS Webhook</button>
+              <button class="btn btn-success" onclick="testQA()">❓ Test Q&A: "cash?"</button>
+            </div>
           </div>
 
           <div class="card">
@@ -143,12 +179,24 @@ router.get('/', async (req, res) => {
           </div>
 
           <div class="card">
-            <h2 style="margin-bottom: 15px;">💬 SMS Commands</h2>
+            <h2 style="margin-bottom: 15px;">📊 Ask About Your Numbers</h2>
+            <table style="width: 100%; color: #ccc;">
+              <tr><td style="padding: 5px;"><code>cash?</code></td><td>Bank balance + insights</td></tr>
+              <tr><td style="padding: 5px;"><code>who owes me?</code></td><td>AR outstanding + top invoices</td></tr>
+              <tr><td style="padding: 5px;"><code>this week?</code></td><td>Revenue vs last week</td></tr>
+              <tr><td style="padding: 5px;"><code>margin?</code></td><td>Gross margin YTD</td></tr>
+              <tr><td style="padding: 5px;"><code>runway?</code></td><td>Weeks of cash runway</td></tr>
+              <tr><td style="padding: 5px;"><code>wins?</code></td><td>This week's wins</td></tr>
+              <tr><td style="padding: 5px;"><code>summary?</code></td><td>Quick overview of everything</td></tr>
+            </table>
+          </div>
+
+          <div class="card">
+            <h2 style="margin-bottom: 15px;">💬 Receipt Commands</h2>
             <table style="width: 100%; color: #ccc;">
               <tr><td style="padding: 5px;"><code>Wailea</code></td><td>Assign to Wailea job (billable)</td></tr>
               <tr><td style="padding: 5px;"><code>SHOP</code></td><td>Mark as stock (not billable)</td></tr>
               <tr><td style="padding: 5px;"><code>SKIP</code></td><td>Skip for now, ask later</td></tr>
-              <tr><td style="padding: 5px;"><code>?</code></td><td>List recent jobs</td></tr>
               <tr><td style="padding: 5px;"><code>[Photo]</code></td><td>Send receipt photo to match</td></tr>
             </table>
           </div>
@@ -189,6 +237,44 @@ router.get('/', async (req, res) => {
             } catch (e) {
               alert('Error: ' + e.message);
             }
+          }
+
+          async function setupWebhook() {
+            const btn = event.target;
+            btn.textContent = '⏳ Setting up...';
+            try {
+              const res = await fetch('/smart-receipt/api/setup-webhook', { method: 'POST' });
+              const data = await res.json();
+              if (data.success) {
+                alert('✅ Webhook registered!\\n\\nURL: ' + data.webhookUrl + '\\n\\nYou can now text questions to the bot!');
+              } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+              }
+            } catch (e) {
+              alert('Error: ' + e.message);
+            }
+            btn.textContent = '📥 Setup SMS Webhook';
+          }
+
+          async function testQA() {
+            const btn = event.target;
+            btn.textContent = '⏳ Asking...';
+            try {
+              const res = await fetch('/smart-receipt/api/ask-sms', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: 'cash?' })
+              });
+              const data = await res.json();
+              if (data.success) {
+                alert('✅ Q&A response sent to group SMS!');
+              } else {
+                alert('Error: ' + (data.error || data.response || 'Unknown error'));
+              }
+            } catch (e) {
+              alert('Error: ' + e.message);
+            }
+            btn.textContent = '❓ Test Q&A: "cash?"';
           }
         </script>
       </body>
@@ -287,18 +373,49 @@ router.get('/api/status', async (req, res) => {
  */
 router.post('/webhook/sms', async (req, res) => {
   try {
-    const message = req.body;
+    const payload = req.body;
     
-    logger.info('Received SMS webhook', { 
+    // Handle RingCentral webhook validation
+    if (payload.validation_token) {
+      logger.info('RingCentral webhook validation request');
+      return res.json({ validation_token: payload.validation_token });
+    }
+    
+    // Process the webhook payload
+    const message = await ringcentral.processIncomingWebhook(payload);
+    
+    if (!message) {
+      logger.warn('Could not parse webhook payload');
+      return res.json({ success: true, parsed: false });
+    }
+    
+    const text = message.text || '';
+    
+    logger.info('Received SMS', { 
       from: message.from,
+      text: text.substring(0, 50),
       hasAttachment: message.attachments?.length > 0 
     });
 
+    // Check if it's a data question
+    if (isDataQuestion(text)) {
+      logger.info('Routing to Data Q&A Bot', { question: text });
+      
+      // Process with Q&A Bot
+      const result = await dataQABot.processQuestion(text);
+      
+      // Send response back via SMS
+      await groupSMS.send(result.response);
+      
+      return res.json({ success: true, type: 'qa', response: result.response });
+    }
+
+    // Otherwise handle as receipt/categorization flow
     if (message.attachments && message.attachments.length > 0) {
       // Photo received
       await smartReceiptBot.handleIncomingPhoto(message);
-    } else {
-      // Text reply
+    } else if (text) {
+      // Text reply for categorization
       await smartReceiptBot.handleSMSReply(message);
     }
 
@@ -306,6 +423,113 @@ router.post('/webhook/sms', async (req, res) => {
 
   } catch (error) {
     logger.error('SMS webhook error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * API: Register RingCentral webhook for incoming SMS
+ */
+router.post('/api/setup-webhook', async (req, res) => {
+  try {
+    // Get the base URL from request or config
+    const baseUrl = req.body.baseUrl || 
+                    process.env.BASE_URL || 
+                    `${req.protocol}://${req.get('host')}`;
+    
+    const webhookUrl = `${baseUrl}/smart-receipt/webhook/sms`;
+    
+    logger.info('Setting up RingCentral webhook', { webhookUrl });
+    
+    const subscription = await ringcentral.setupWebhook(webhookUrl);
+    
+    res.json({ 
+      success: true, 
+      message: 'Webhook registered!',
+      webhookUrl,
+      subscriptionId: subscription.id,
+      expiresAt: subscription.expirationTime
+    });
+
+  } catch (error) {
+    logger.error('Failed to setup webhook', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * API: Check webhook status
+ */
+router.get('/api/webhook-status', async (req, res) => {
+  try {
+    const isAuth = await ringcentral.isAuthenticated();
+    
+    if (!isAuth) {
+      return res.json({ 
+        success: false, 
+        authenticated: false,
+        message: 'RingCentral not authenticated' 
+      });
+    }
+    
+    res.json({ 
+      success: true, 
+      authenticated: true,
+      message: 'RingCentral connected. Click "Setup Webhook" if not receiving messages.'
+    });
+
+  } catch (error) {
+    logger.error('Webhook status check failed', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * API: Test Q&A Bot via API (for testing without SMS)
+ */
+router.post('/api/ask', async (req, res) => {
+  try {
+    const { question } = req.body;
+    
+    if (!question) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Provide a question' 
+      });
+    }
+
+    const result = await dataQABot.processQuestion(question);
+    res.json({ success: true, ...result });
+
+  } catch (error) {
+    logger.error('Q&A API error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * API: Ask Q&A Bot and send response to group SMS
+ */
+router.post('/api/ask-sms', async (req, res) => {
+  try {
+    const { question } = req.body;
+    
+    if (!question) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Provide a question' 
+      });
+    }
+
+    const result = await dataQABot.processQuestion(question);
+    
+    // Send to group
+    await groupSMS.send(result.response);
+    
+    res.json({ success: true, sent: true, ...result });
+
+  } catch (error) {
+    logger.error('Q&A SMS API error', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
 });
