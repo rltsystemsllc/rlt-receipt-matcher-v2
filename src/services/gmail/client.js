@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('../../config');
 const logger = require('../../utils/logger');
+const tokenStore = require('../token-store');
 
 class GmailClient {
   constructor() {
@@ -140,52 +141,36 @@ class GmailClient {
   }
 
   /**
-   * Save tokens to file
+   * Save tokens to file and env var
    */
   saveTokens(tokens, tokenPath = null) {
     const savePath = path.resolve(tokenPath || config.gmail.tokenPath);
-    const tokenDir = path.dirname(savePath);
     
-    if (!fs.existsSync(tokenDir)) {
-      fs.mkdirSync(tokenDir, { recursive: true });
-    }
+    // Determine service name based on token path
+    const serviceName = tokenPath && tokenPath.includes('sheets') ? 'sheets' : 'gmail';
     
     // Merge with existing tokens to preserve refresh_token
-    let existingTokens = {};
-    if (fs.existsSync(savePath)) {
-      try {
-        existingTokens = JSON.parse(fs.readFileSync(savePath, 'utf8'));
-      } catch {
-        // Ignore parse errors
-      }
-    }
+    const existingTokens = tokenStore.loadTokens(serviceName, savePath) || {};
     
     const mergedTokens = {
       ...existingTokens,
       ...tokens
     };
     
-    fs.writeFileSync(savePath, JSON.stringify(mergedTokens, null, 2));
-    logger.info('Gmail tokens saved', { path: savePath });
+    // Use token store (saves to file + logs env var for Railway)
+    tokenStore.saveTokens(serviceName, mergedTokens, savePath);
   }
 
   /**
-   * Load tokens from file
+   * Load tokens from env var or file
    */
   loadTokens(tokenPath = null) {
     const loadPath = path.resolve(tokenPath || config.gmail.tokenPath);
     
-    if (!fs.existsSync(loadPath)) {
-      return null;
-    }
+    // Determine service name based on token path
+    const serviceName = tokenPath && tokenPath.includes('sheets') ? 'sheets' : 'gmail';
     
-    try {
-      const data = fs.readFileSync(loadPath, 'utf8');
-      return JSON.parse(data);
-    } catch (error) {
-      logger.error('Failed to load Gmail tokens', { error: error.message });
-      return null;
-    }
+    return tokenStore.loadTokens(serviceName, loadPath);
   }
 
   /**

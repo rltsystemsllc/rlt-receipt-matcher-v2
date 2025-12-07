@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const config = require('../../config');
 const logger = require('../../utils/logger');
+const tokenStore = require('../token-store');
 
 class QuickBooksClient {
   constructor() {
@@ -259,47 +260,28 @@ class QuickBooksClient {
   }
 
   /**
-   * Save tokens to file
+   * Save tokens to file and env var
    */
   saveTokens(tokens) {
     const tokenPath = path.resolve(config.quickbooks.tokenPath);
-    const tokenDir = path.dirname(tokenPath);
     
-    if (!fs.existsSync(tokenDir)) {
-      fs.mkdirSync(tokenDir, { recursive: true });
-    }
-    
-    // Add createdAt timestamp for token expiry validation
+    // Add createdAt timestamp and ensure realmId
     const tokensToSave = {
       ...tokens,
-      // Preserve/ensure realmId (fallback to current companyId or env)
       realmId: tokens.realmId || this.companyId || config.quickbooks.realmId || null,
       createdAt: Date.now()
     };
     
-    fs.writeFileSync(tokenPath, JSON.stringify(tokensToSave, null, 2));
-    logger.info('QuickBooks tokens saved');
+    // Use token store (saves to file + logs env var for Railway)
+    tokenStore.saveTokens('quickbooks', tokensToSave, tokenPath);
   }
 
   /**
-   * Load tokens from file
+   * Load tokens from env var or file
    */
   loadTokens() {
     const tokenPath = path.resolve(config.quickbooks.tokenPath);
-    
-    if (!fs.existsSync(tokenPath)) {
-      return null;
-    }
-    
-    try {
-      const data = fs.readFileSync(tokenPath, 'utf8');
-      return JSON.parse(data);
-    } catch (error) {
-      logger.error('Failed to load QuickBooks tokens', { 
-        error: error.message 
-      });
-      return null;
-    }
+    return tokenStore.loadTokens('quickbooks', tokenPath);
   }
 
   /**
