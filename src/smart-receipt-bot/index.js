@@ -52,8 +52,14 @@ class SmartReceiptBot {
     try {
       // Don't check if we already have a pending transaction waiting for response
       if (this.pendingTransactions.size > 0) {
+        const pendingCount = this.pendingTransactions.size;
         logger.info('Still waiting for response on pending transaction, skipping check');
-        return { skipped: true, reason: 'pending_response' };
+        return { 
+          transactionsFound: 0,
+          transactionsProcessed: 0,
+          transactionsSkipped: pendingCount,
+          message: `Waiting for reply on ${pendingCount} pending transaction(s)`
+        };
       }
 
       logger.info('Checking QBO for uncategorized transactions...');
@@ -66,15 +72,33 @@ class SmartReceiptBot {
       if (transactions.length > 0) {
         const txn = transactions[0];
         await this.processTransaction(txn);
-        return { processed: 1, remaining: transactions.length - 1 };
+        return { 
+          transactionsFound: transactions.length,
+          transactionsProcessed: 1,
+          transactionsSkipped: 0,
+          firstTransaction: {
+            vendor: txn.vendor,
+            amount: txn.amount,
+            date: txn.date
+          }
+        };
       }
 
-      return { processed: 0, remaining: 0 };
+      return { 
+        transactionsFound: 0,
+        transactionsProcessed: 0,
+        transactionsSkipped: 0
+      };
 
     } catch (error) {
       logger.error('Error checking transactions', { error: error.message });
       // Don't send error SMS - too spammy
-      return { error: error.message };
+      return { 
+        transactionsFound: 0,
+        transactionsProcessed: 0,
+        transactionsSkipped: 0,
+        error: error.message 
+      };
     }
   }
 

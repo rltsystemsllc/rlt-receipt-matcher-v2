@@ -305,8 +305,18 @@ router.get('/', async (req, res) => {
  */
 router.post('/api/check', async (req, res) => {
   try {
-    await smartReceiptBot.checkForNewTransactions();
-    res.json({ success: true, message: 'Check complete' });
+    const result = await smartReceiptBot.checkForNewTransactions();
+    const found = result?.transactionsFound || 0;
+    const processed = result?.transactionsProcessed || 0;
+    const skipped = result?.transactionsSkipped || 0;
+    
+    let message = `✅ Check complete!\n\n`;
+    message += `📊 Found: ${found} uncategorized transactions\n`;
+    if (processed > 0) message += `✔️ Processed: ${processed}\n`;
+    if (skipped > 0) message += `⏭️ Skipped (asked recently): ${skipped}`;
+    if (found === 0) message += `\nAll caught up! No transactions need attention.`;
+    
+    res.json({ success: true, message, ...result });
   } catch (error) {
     logger.error('Manual check failed', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
