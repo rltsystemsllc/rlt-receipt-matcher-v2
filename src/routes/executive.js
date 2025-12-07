@@ -235,12 +235,12 @@ function calculateKeithMetrics({ arAging, recentPayments, openInvoices, last90Da
   const totalRevenue = (last90DaysInvoices || []).reduce((sum, inv) => sum + (parseFloat(inv.TotalAmt) || 0), 0);
   const totalExpenses = (last90DaysExpenses || []).reduce((sum, exp) => sum + (parseFloat(exp.TotalAmt) || 0), 0);
   
-  // Gross margin = (Revenue - Material Costs) / Revenue
-  // For service business, estimate materials at ~30% of expenses (rest is labor overhead)
-  const estimatedMaterialCost = totalExpenses * 0.5; // Adjust based on actual mix
+  // Gross Margin = (Revenue - Material Costs) / Revenue
+  // For electrical contractor: purchases are mostly job materials (COGS)
+  // Using 100% of purchases as material cost for accurate margin
   const grossMargin = totalRevenue > 0 
-    ? ((totalRevenue - estimatedMaterialCost) / totalRevenue * 100) 
-    : 50;
+    ? ((totalRevenue - totalExpenses) / totalRevenue * 100) 
+    : 60; // Default to healthy 60% if no data
   
   // 2. DAYS TO INVOICE - Calculate average days from invoice create to payment
   // Using payment data to see how quickly invoices are created after work
