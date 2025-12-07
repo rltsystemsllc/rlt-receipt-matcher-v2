@@ -158,7 +158,8 @@ router.get('/', async (req, res) => {
             <div class="actions">
               <button class="btn btn-primary" onclick="checkNow()">🔍 Check for New Transactions</button>
               <button class="btn btn-success" onclick="sendSummary()">📱 Send Summary to Group</button>
-              <button class="btn btn-warning" onclick="testSMS()">🧪 Test Group SMS</button>
+              <button class="btn btn-warning" onclick="testSMS()">🧪 Test SMS</button>
+              <button class="btn btn-warning" onclick="testMMS()">📷 Test MMS Photo</button>
             </div>
             <div class="actions" style="margin-top: 10px;">
               <button class="btn btn-primary" onclick="setupWebhook()">📥 Setup SMS Webhook</button>
@@ -237,6 +238,19 @@ router.get('/', async (req, res) => {
             } catch (e) {
               alert('Error: ' + e.message);
             }
+          }
+
+          async function testMMS() {
+            const btn = event.target;
+            btn.textContent = '⏳ Sending...';
+            try {
+              const res = await fetch('/smart-receipt/api/test-mms', { method: 'POST' });
+              const data = await res.json();
+              alert(data.message || 'Test MMS sent!');
+            } catch (e) {
+              alert('Error: ' + e.message);
+            }
+            btn.textContent = '📷 Test MMS Photo';
           }
 
           async function setupWebhook() {
@@ -321,6 +335,23 @@ router.post('/api/test-sms', async (req, res) => {
     res.json({ success: true, message: 'Test SMS sent to Bobby and Jessica' });
   } catch (error) {
     logger.error('Test SMS failed', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * API: Test group MMS with sample image
+ */
+router.post('/api/test-mms', async (req, res) => {
+  try {
+    // Create a simple test image (1x1 red pixel PNG)
+    const testImageBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==';
+    const imageBuffer = Buffer.from(testImageBase64, 'base64');
+    
+    await groupSMS.sendWithImage('🧪 Test MMS with image!', imageBuffer, 'test.png');
+    res.json({ success: true, message: 'Test MMS sent to group chat!' });
+  } catch (error) {
+    logger.error('Test MMS failed', { error: error.message });
     res.status(500).json({ success: false, error: error.message });
   }
 });
