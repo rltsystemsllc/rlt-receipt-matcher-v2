@@ -94,14 +94,18 @@ async function getQBOData() {
     fetchProfitLossReport(yearStartStr, today)
   ]);
   
-  // Filter bank accounts - exclude lines of credit
+  // Filter bank accounts - exclude lines of credit and reserve accounts
   const realBankAccounts = (bankAccounts || []).filter(a => {
     const name = (a.Name || '').toLowerCase();
     const subType = (a.AccountSubType || '').toLowerCase();
+    // Exclude lines of credit
     if (name.includes('line of credit') || name.includes('loc') || 
         subType.includes('lineofcredit')) return false;
     const balance = parseFloat(a.CurrentBalance) || 0;
+    // Exclude large negative balances (credit lines)
     if (balance < -10000) return false;
+    // Exclude the $9,900 reserve/LOC account
+    if (Math.abs(balance - 9900) < 1) return false;
     return true;
   });
   
