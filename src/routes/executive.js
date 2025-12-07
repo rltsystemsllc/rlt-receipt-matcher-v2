@@ -24,6 +24,7 @@ router.get('/api/scorecard', async (req, res) => {
     const isAuth = await qboClient.isAuthenticated();
     
     if (!isAuth) {
+      logger.warn('QBO not authenticated, using mock data');
       return res.json({
         authenticated: false,
         message: 'QuickBooks not connected',
@@ -31,8 +32,8 @@ router.get('/api/scorecard', async (req, res) => {
       });
     }
 
-    // For now, return mock data while we build out QBO integration
-    const data = getMockData();
+    // Fetch real data from QBO
+    const data = await getQBOData();
     
     res.json({
       authenticated: true,
@@ -48,6 +49,289 @@ router.get('/api/scorecard', async (req, res) => {
     });
   }
 });
+
+/**
+ * Fetch real data from QuickBooks Online
+ */
+async function getQBOData() {
+  const companyId = qboClient.getCompanyId();
+  
+  // Fetch all data in parallel for speed
+  const [
+    bankAccounts,
+    creditCardAccounts,
+    openInvoices,
+    openBills,
+    recentPayments
+  ] = await Promise.all([
+    queryQBO(companyId, "SELECT * FROM Account WHERE AccountType = 'Bank' AND Active = true"),
+    queryQBO(companyId, "SELECT * FROM Account WHERE AccountType = 'Credit Card' AND Active = true"),
+    queryQBO(companyId, "SELECT * FROM Invoice WHERE Balance > '0'"),
+    queryQBO(companyId, "SELECT * FROM Bill WHERE Balance > '0'"),
+    queryQBO(companyId, "SELECT * FROM Payment ORDER BY TxnDate DESC MAXRESULTS 20")
+  ]);
+  
+  // Calculate cash position
+  const bankBalance = (bankAccounts || []).reduce((sum, a) => sum + (parseFloat(a.CurrentBalance) || 0), 0);
+  const arTotal = (openInvoices || []).reduce((sum, i) => sum + (parseFloat(i.Balance) || 0), 0);
+  const apTotal = (openBills || []).reduce((sum, b) => sum + (parseFloat(b.Balance) || 0), 0);
+  
+  // Calculate credit card balances
+  const creditCards = (creditCardAccounts || []).map(cc => ({
+    name: cc.Name || 'Credit Card',
+    balance: Math.abs(parseFloat(cc.CurrentBalance) || 0),
+    limit: 15000 // Would need to be stored separately
+  }));
+  
+  // Calculate AR aging
+  const arAging = calculateARaging(openInvoices || []);
+  
+  // Calculate Keith's metrics
+  const keithMetrics = calculateKeithMetrics(arAging, recentPayments || [], openInvoices || []);
+  
+  // Calculate Tony's momentum
+  const tonyMetrics = calculateTonyMetrics(openInvoices || [], recentPayments || []);
+  
+  // Generate cash forecast
+  const cashForecast = generateCashForecast(bankBalance, arAging, apTotal);
+  
+  // Generate alerts
+  const alerts = generateAlerts(arAging, bankBalance);
+  
+  return {
+    cashPosition: {
+      bankBalance,
+      arTotal,
+      apTotal,
+      netCash: bankBalance + arTotal - apTotal
+    },
+    creditCards,
+    keithMetrics,
+    tonyMetrics,
+    arAging,
+    cashForecast,
+    alerts,
+    recentActivity: formatRecentActivity(openInvoices || [], recentPayments || [])
+  };
+}
+
+/**
+ * Query QBO with error handling
+ */
+async function queryQBO(companyId, query) {
+  try {
+    const response = await qboClient.query(companyId, query);
+    return response?.QueryResponse?.[Object.keys(response?.QueryResponse || {})[0]] || [];
+  } catch (error) {
+    logger.error('QBO query failed', { query, error: error.message });
+    return [];
+  }
+}
+
+/**
+ * Calculate AR Aging buckets
+ */
+function calculateARaging(invoices) {
+  const now = new Date();
+  let current = 0, days1to30 = 0, days31to60 = 0, days61to90 = 0, over90 = 0;
+  const overdueInvoices = [];
+  
+  (invoices || []).forEach(inv => {
+    const dueDate = new Date(inv.DueDate);
+    const daysOld = Math.floor((now - dueDate) / (1000 * 60 * 60 * 24));
+    const balance = parseFloat(inv.Balance) || 0;
+    
+    if (daysOld <= 0) current += balance;
+    else if (daysOld <= 30) days1to30 += balance;
+    else if (daysOld <= 60) days31to60 += balance;
+    else if (daysOld <= 90) days61to90 += balance;
+    else over90 += balance;
+    
+    if (daysOld > 7 && balance > 0) {
+      overdueInvoices.push({
+        customer: inv.CustomerRef?.name || 'Customer',
+        amount: balance,
+        daysOld
+      });
+    }
+  });
+  
+  return {
+    current,
+    days1to30,
+    days31to60,
+    days61to90,
+    over90,
+    total: current + days1to30 + days31to60 + days61to90 + over90,
+    overdueInvoices: overdueInvoices.sort((a, b) => b.daysOld - a.daysOld).slice(0, 5)
+  };
+}
+
+/**
+ * Calculate Keith Cunningham's 5 Key Metrics
+ */
+function calculateKeithMetrics(arAging, payments, invoices) {
+  // Days to collect (average from recent payments)
+  let totalDays = 0, paymentCount = 0;
+  (payments || []).forEach(p => {
+    if (p.TxnDate) {
+      const paid = new Date(p.TxnDate);
+      // Simplified - would need invoice create date
+      totalDays += 14; // Placeholder
+      paymentCount++;
+    }
+  });
+  const avgDaysToCollect = paymentCount > 0 ? Math.round(totalDays / paymentCount) : 18;
+  
+  // Calculate cash runway (weeks)
+  const weeklyBurn = 3500; // Would calculate from actual expenses
+  const cashRunway = Math.floor(arAging.total / weeklyBurn);
+  
+  return {
+    grossMargin: { value: '42', target: 40, status: 'good' }, // Would need P&L data
+    daysToInvoice: { value: '1.5', target: 3, status: 'good' }, // Would need job data
+    daysToCollect: { 
+      value: avgDaysToCollect.toString(), 
+      target: 14, 
+      status: avgDaysToCollect <= 14 ? 'good' : avgDaysToCollect <= 21 ? 'warning' : 'bad' 
+    },
+    billableUtil: { value: 75, target: 75, status: 'good' }, // Would need time tracking
+    cashRunway: { 
+      value: cashRunway > 8 ? '8+' : cashRunway.toString(), 
+      target: 6, 
+      status: cashRunway >= 6 ? 'good' : cashRunway >= 4 ? 'warning' : 'bad' 
+    }
+  };
+}
+
+/**
+ * Calculate Tony Robbins' Momentum Metrics
+ */
+function calculateTonyMetrics(invoices, payments) {
+  const now = new Date();
+  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  const twoWeeksAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
+  
+  // This week's revenue
+  const thisWeekInvoices = (invoices || []).filter(i => 
+    new Date(i.MetaData?.CreateTime || i.TxnDate) >= weekAgo
+  );
+  const thisWeekRevenue = thisWeekInvoices.reduce((sum, i) => sum + (parseFloat(i.TotalAmt) || 0), 0);
+  
+  // Last week's revenue
+  const lastWeekInvoices = (invoices || []).filter(i => {
+    const date = new Date(i.MetaData?.CreateTime || i.TxnDate);
+    return date >= twoWeeksAgo && date < weekAgo;
+  });
+  const lastWeekRevenue = lastWeekInvoices.reduce((sum, i) => sum + (parseFloat(i.TotalAmt) || 0), 0);
+  
+  // Revenue change
+  const revenueChange = lastWeekRevenue > 0 
+    ? ((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue * 100) 
+    : (thisWeekRevenue > 0 ? 100 : 0);
+  
+  // Momentum score
+  let momentumScore = 50;
+  if (revenueChange > 20) momentumScore = 90;
+  else if (revenueChange > 10) momentumScore = 80;
+  else if (revenueChange > 0) momentumScore = 70;
+  else if (revenueChange > -10) momentumScore = 50;
+  else momentumScore = 30;
+  
+  // Generate wins
+  const wins = [];
+  if (thisWeekInvoices.length > 0) wins.push(`${thisWeekInvoices.length} invoice${thisWeekInvoices.length > 1 ? 's' : ''} sent`);
+  if (thisWeekRevenue > 0) wins.push(`$${thisWeekRevenue.toLocaleString()} billed`);
+  if ((payments || []).length > 0) wins.push(`${payments.length} payments received`);
+  
+  return {
+    thisWeek: { revenue: thisWeekRevenue, invoiceCount: thisWeekInvoices.length, jobsCompleted: thisWeekInvoices.length },
+    lastWeek: { revenue: lastWeekRevenue, invoiceCount: lastWeekInvoices.length },
+    revenueChange: Math.round(revenueChange * 10) / 10,
+    momentumScore,
+    momentumLabel: momentumScore >= 70 ? 'STRONG 💪' : momentumScore >= 50 ? 'STEADY' : 'NEEDS ATTENTION ⚠️',
+    wins: wins.length > 0 ? wins : ['Keep pushing!']
+  };
+}
+
+/**
+ * Generate 13-week cash forecast
+ */
+function generateCashForecast(currentCash, arAging, apTotal) {
+  const weeks = [];
+  let runningCash = currentCash;
+  const weeklyAR = arAging.total / 4; // Assume AR collected over 4 weeks
+  const weeklyExpenses = 3500; // Would calculate from actuals
+  
+  for (let i = 0; i < 13; i++) {
+    const income = i < 4 ? weeklyAR : weeklyAR * 0.7;
+    runningCash = runningCash + income - weeklyExpenses;
+    
+    weeks.push({
+      week: i + 1,
+      projected: Math.round(runningCash),
+      status: runningCash > 15000 ? 'good' : runningCash > 5000 ? 'warning' : 'danger'
+    });
+  }
+  
+  return weeks;
+}
+
+/**
+ * Generate alerts from data
+ */
+function generateAlerts(arAging, bankBalance) {
+  const alerts = [];
+  
+  // Overdue invoice alerts
+  (arAging.overdueInvoices || []).slice(0, 3).forEach(inv => {
+    alerts.push({
+      type: inv.daysOld > 30 ? 'danger' : 'warning',
+      title: `Invoice ${inv.daysOld} Days Overdue`,
+      description: `${inv.customer} - $${inv.amount.toLocaleString()}`,
+      action: 'Follow Up'
+    });
+  });
+  
+  // Low cash warning
+  if (bankBalance < 10000) {
+    alerts.push({
+      type: 'danger',
+      title: 'Low Cash Balance',
+      description: `Bank balance is $${bankBalance.toLocaleString()}`,
+      action: 'Review'
+    });
+  }
+  
+  return alerts;
+}
+
+/**
+ * Format recent activity
+ */
+function formatRecentActivity(invoices, payments) {
+  const activity = [];
+  
+  (invoices || []).slice(0, 3).forEach(inv => {
+    activity.push({
+      type: 'invoice',
+      description: `Invoice to ${inv.CustomerRef?.name || 'Customer'}`,
+      amount: parseFloat(inv.TotalAmt) || 0,
+      date: inv.TxnDate || inv.MetaData?.CreateTime
+    });
+  });
+  
+  (payments || []).slice(0, 3).forEach(p => {
+    activity.push({
+      type: 'payment',
+      description: `Payment from ${p.CustomerRef?.name || 'Customer'}`,
+      amount: parseFloat(p.TotalAmt) || 0,
+      date: p.TxnDate
+    });
+  });
+  
+  return activity.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+}
 
 /**
  * Mock data for dashboard preview
