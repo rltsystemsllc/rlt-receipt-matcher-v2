@@ -1,7 +1,6 @@
 /**
- * RLT Automation System - Main Entry Point
+ * RLT Automation System
  */
-
 require('dotenv').config();
 
 const express = require('express');
@@ -30,11 +29,7 @@ const smartReceiptRoutes = require('./routes/smart-receipt');
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-app.use((req, res, next) => {
-  logger.info(`${req.method} ${req.path}`, { ip: req.ip });
-  next();
-});
+app.use((req, res, next) => { logger.info(`${req.method} ${req.path}`); next(); });
 
 app.use('/', indexRoutes);
 app.use('/auth', authRoutes);
@@ -47,16 +42,11 @@ app.use('/executive', executiveRoutes);
 app.use('/operations', operationsRoutes);
 app.use('/smart-receipt', smartReceiptRoutes);
 
-app.use((err, req, res, next) => {
-  logger.error('Error', { error: err.message });
-  res.status(500).json({ error: 'Internal server error' });
-});
-
+app.use((err, req, res, next) => { logger.error('Error', { error: err.message }); res.status(500).json({ error: 'Server error' }); });
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 
 async function start() {
   const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
-  
   app.listen(config.port, host, () => {
     logger.info('🚀 RLT AUTOMATION SYSTEM');
     logger.info(`   http://localhost:${config.port}`);
@@ -69,12 +59,11 @@ async function start() {
   smsAlerts.start();
   smartReceiptBot.start();
   
-  // SMS polling for replies
+  // SMS polling
   ringcentral.onIncomingMessage(async (msg) => {
     try {
       const text = msg.text || '';
       logger.info('📱 SMS', { from: msg.from, text: text.substring(0, 30) });
-      
       const qaPatterns = [/cash/i, /bank/i, /ar\b/i, /margin/i, /runway/i, /wins/i, /summary/i, /\?$/];
       if (qaPatterns.some(p => p.test(text))) {
         const result = await dataQABot.processQuestion(text);
@@ -82,13 +71,10 @@ async function start() {
       } else {
         await smartReceiptBot.handleSMSReply(msg);
       }
-    } catch (e) {
-      logger.error('SMS error', { error: e.message });
-    }
+    } catch (e) { logger.error('SMS error', { error: e.message }); }
   });
   ringcentral.startPolling(10000);
-  
-  logger.info('🧾 Smart Receipt Bot ready (12/1/25+ only)');
+  logger.info('🧾 Smart Receipt Bot ready');
 }
 
 process.on('SIGINT', () => { scheduler.stop(); bot2.stop(); smsAlerts.stop(); process.exit(0); });

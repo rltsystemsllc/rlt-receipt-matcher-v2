@@ -196,18 +196,28 @@ class SmartReceiptBot {
     qboMonitor.markAsked(txn.id);
 
     // Build detailed message with payment info
-    const paymentInfo = txn.accountRef?.name || txn.paymentType || 'Unknown payment';
+    const paymentInfo = txn.accountRef?.name || txn.paymentType || 'Unknown';
     const dateFormatted = new Date(txn.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    
+    // Get bank description if vendor is unknown
+    let vendorDisplay = txn.vendor;
+    const bankMemo = txn.memo || txn.raw?.PrivateNote || '';
+    const bankDesc = txn.raw?.Line?.[0]?.Description || '';
+    
+    if (vendorDisplay === 'Unknown Vendor' || vendorDisplay === 'Unknown') {
+      if (bankDesc) vendorDisplay = bankDesc.substring(0, 30);
+      else if (bankMemo) vendorDisplay = bankMemo.substring(0, 30);
+    }
 
     // Send MMS with receipt image
     await groupSMS.sendWithImage(
-      `🧾 ${txn.vendor} $${txn.amount}\n` +
+      `🧾 ${vendorDisplay} $${txn.amount}\n` +
       `📅 ${dateFormatted} | 💳 ${paymentInfo}\n\n` +
       `What job? (or SHOP for stock)`,
       receipt.imageData
     );
 
-    logger.info('Asked for job assignment', { txnId: txn.id });
+    logger.info('Asked for job assignment', { txnId: txn.id, vendor: vendorDisplay });
   }
 
   /**
@@ -221,18 +231,32 @@ class SmartReceiptBot {
     qboMonitor.markAsked(txn.id);
 
     // Build detailed message with payment info
-    const paymentInfo = txn.accountRef?.name || txn.paymentType || 'Unknown payment';
+    const paymentInfo = txn.accountRef?.name || txn.paymentType || 'Unknown';
     const dateFormatted = new Date(txn.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    
+    // Get bank description if vendor is unknown
+    let vendorDisplay = txn.vendor;
+    const bankMemo = txn.memo || txn.raw?.PrivateNote || '';
+    const bankDesc = txn.raw?.Line?.[0]?.Description || '';
+    
+    // If vendor is "Unknown" but we have bank description, use that
+    if (vendorDisplay === 'Unknown Vendor' || vendorDisplay === 'Unknown') {
+      if (bankDesc) vendorDisplay = bankDesc.substring(0, 30);
+      else if (bankMemo) vendorDisplay = bankMemo.substring(0, 30);
+    }
 
-    // Send text-only message
-    await groupSMS.send(
-      `🧾 ${txn.vendor} $${txn.amount}\n` +
-      `📅 ${dateFormatted} | 💳 ${paymentInfo}\n` +
-      `📎 No receipt found\n\n` +
-      `What job? (or SHOP for stock)`
-    );
+    // Send text-only message with all available info
+    let message = `🧾 ${vendorDisplay} $${txn.amount}\n`;
+    message += `📅 ${dateFormatted} | 💳 ${paymentInfo}\n`;
+    if (bankMemo && bankMemo !== vendorDisplay) {
+      message += `📝 ${bankMemo.substring(0, 40)}\n`;
+    }
+    message += `📎 No receipt found\n\n`;
+    message += `What job? (or SHOP for stock)`;
 
-    logger.info('Asked for job (no receipt)', { txnId: txn.id });
+    await groupSMS.send(message);
+
+    logger.info('Asked for job (no receipt)', { txnId: txn.id, vendor: vendorDisplay });
   }
 
   /**
