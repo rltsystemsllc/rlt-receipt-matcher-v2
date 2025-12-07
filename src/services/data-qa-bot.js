@@ -311,62 +311,68 @@ const MENTOR_GUIDANCE = {
  * Each response includes guidance from a relevant mentor
  */
 const QUESTION_PATTERNS = [
-  // Cash & Bank
-  { patterns: [/cash|bank|balance/i], handler: 'getCashPosition', mentor: 'mike', principle: 'cashFlow' },
-  { patterns: [/how much.*(have|got)|money/i], handler: 'getCashPosition', mentor: 'keith', principle: 'cashFlow' },
+  // Cash & Bank - Keith Cunningham
+  { patterns: [/cash|bank|balance/i], handler: 'getCashPosition', mentor: 'keith', principle: 'cashFlow' },
+  { patterns: [/how much.*(have|got)|money/i], handler: 'getCashPosition', mentor: 'keithBlueprint', principle: 'cashFlow' },
   
-  // AR / Who owes
+  // AR / Who owes - Keith Cunningham
   { patterns: [/ar|receivable|owed|owes|who owes/i], handler: 'getARDetails', mentor: 'keith', principle: 'ar' },
   { patterns: [/overdue|late|past due/i], handler: 'getOverdueInvoices', mentor: 'keithVault', principle: 'collections' },
   
   // Revenue / Invoices
   { patterns: [/revenue|billed|invoiced/i], handler: 'getRevenueThisWeek', mentor: 'tony', principle: 'momentum' },
-  { patterns: [/this week|last week/i], handler: 'getWeekComparison', mentor: 'danGap', principle: 'wins' },
+  { patterns: [/this week|last week/i], handler: 'getWeekComparison', mentor: 'tony', principle: 'weekly' },
   
-  // Collections / Payments
+  // Collections / Payments - Keith Cunningham
   { patterns: [/collected|payments|paid/i], handler: 'getCollections', mentor: 'keithBlueprint', principle: 'collections' },
   
-  // Margins / Profit
-  { patterns: [/margin|profit|gross/i], handler: 'getGrossMargin', mentor: 'mike', principle: 'margins' },
+  // Margins / Profit - Keith Cunningham
+  { patterns: [/margin|profit|gross/i], handler: 'getGrossMargin', mentor: 'keith', principle: 'margins' },
   
-  // Expenses
+  // Expenses - Mike Michalowicz (Profit First)
   { patterns: [/expense|spent|spending/i], handler: 'getExpenses', mentor: 'mike', principle: 'runway' },
   
-  // Runway
+  // Runway - Keith Cunningham
   { patterns: [/runway|survive|weeks/i], handler: 'getCashRunway', mentor: 'keithBlueprint', principle: 'runway' },
   
-  // Wins / Progress
-  { patterns: [/wins|winning|celebrate|progress/i], handler: 'getWins', mentor: 'danGap', principle: 'wins' },
+  // Wins / Progress - Tony Robbins
+  { patterns: [/wins|winning|celebrate|progress/i], handler: 'getWins', mentor: 'tony', principle: 'wins' },
   
-  // Credit Cards
-  { patterns: [/credit card|amex|card balance/i], handler: 'getCreditCards', mentor: 'mike', principle: 'cashFlow' },
+  // Credit Cards - Keith Cunningham
+  { patterns: [/credit card|amex|card balance/i], handler: 'getCreditCards', mentor: 'keith', principle: 'cashFlow' },
   
-  // Summary / Overview
-  { patterns: [/summary|overview|scorecard|numbers/i], handler: 'getSummary', mentor: 'gino', principle: 'metrics' },
+  // Summary / Overview - Keith Cunningham
+  { patterns: [/summary|overview|scorecard|numbers/i], handler: 'getSummary', mentor: 'keithBlueprint', principle: 'metrics' },
   
-  // Systems / Process
+  // Systems / Process - David Jenyns
   { patterns: [/system|process|automate/i], handler: 'getSummary', mentor: 'david', principle: 'systems' },
   
-  // Growth / Scaling
+  // Growth / Scaling - Dan Sullivan
   { patterns: [/grow|scale|bigger/i], handler: 'getSummary', mentor: 'dan10x', principle: 'growth' },
   
-  // Delegation / Help
+  // Delegation / Help - Dan Sullivan
   { patterns: [/delegate|hire|help|who/i], handler: 'getSummary', mentor: 'dan', principle: 'systems' },
   
-  // Clients / Customers
-  { patterns: [/client|customer|best/i], handler: 'getARDetails', mentor: 'mikePumpkin', principle: 'clarity' },
+  // Clients / Customers - Donald Miller
+  { patterns: [/client|customer/i], handler: 'getARDetails', mentor: 'donaldStory', principle: 'clarity' },
   
-  // Habits / Improvement
+  // Sales - Donald Miller
+  { patterns: [/sales|selling|close/i], handler: 'getRevenueThisWeek', mentor: 'donaldMarketing', principle: 'action' },
+  
+  // Marketing - Donald Miller
+  { patterns: [/marketing|leads|attract/i], handler: 'getSummary', mentor: 'donaldMarketing', principle: 'systems' },
+  
+  // Habits / Improvement - James Clear
   { patterns: [/habit|improve|better/i], handler: 'getWeekComparison', mentor: 'james', principle: 'action' },
   
-  // Focus / Priorities
+  // Focus / Priorities - Gino Wickman
   { patterns: [/focus|priority|important/i], handler: 'getSummary', mentor: 'gino', principle: 'action' },
   
-  // Why / Purpose
-  { patterns: [/why|purpose|mission/i], handler: 'getSummary', mentor: 'simon', principle: 'clarity' },
+  // Why / Purpose - Tony Robbins
+  { patterns: [/why|purpose|mission/i], handler: 'getSummary', mentor: 'tony', principle: 'action' },
   
-  // Sell / Value
-  { patterns: [/sell|value|worth/i], handler: 'getSummary', mentor: 'john', principle: 'systems' }
+  // Sell / Value - John Warrillow
+  { patterns: [/sell business|value|worth/i], handler: 'getSummary', mentor: 'john', principle: 'systems' }
 ];
 
 /**
