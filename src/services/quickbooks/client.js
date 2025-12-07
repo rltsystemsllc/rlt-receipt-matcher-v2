@@ -260,6 +260,28 @@ class QuickBooksClient {
   }
 
   /**
+   * Execute a QBO query (SQL-like syntax)
+   * @param {string} companyId - The company ID (optional, uses instance companyId)
+   * @param {string} queryStr - The query string (e.g., "SELECT * FROM Account")
+   */
+  async query(companyId, queryStr) {
+    // If called with just one argument, it's the query string
+    if (typeof companyId === 'string' && !queryStr) {
+      queryStr = companyId;
+      companyId = this.companyId;
+    }
+
+    if (!queryStr) {
+      throw new Error('Query string is required');
+    }
+
+    const encodedQuery = encodeURIComponent(queryStr);
+    const endpoint = `/query?query=${encodedQuery}`;
+    
+    return this.makeApiCall('GET', endpoint);
+  }
+
+  /**
    * Save tokens to file and env var
    */
   saveTokens(tokens) {
