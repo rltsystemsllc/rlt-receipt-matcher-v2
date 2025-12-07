@@ -122,6 +122,64 @@
     /* Cash Position */
     .cash-position { grid-column: span 4; }
 
+    /* Credit Cards */
+    .credit-cards { grid-column: span 4; }
+
+    .cc-list { display: flex; flex-direction: column; gap: 16px; }
+
+    .cc-item {
+      padding: 16px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .cc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .cc-name { font-weight: 600; font-size: 14px; }
+    .cc-balance { font-size: 28px; font-weight: 700; color: var(--red); }
+
+    .cc-progress-bar {
+      height: 8px;
+      background: var(--bg-card);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+
+    .cc-progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    .cc-progress-fill.low { background: var(--green); }
+    .cc-progress-fill.medium { background: var(--yellow); }
+    .cc-progress-fill.high { background: var(--red); }
+
+    .cc-details {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .cc-total {
+      display: flex;
+      justify-content: space-between;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+    }
+
+    .cc-total-label { color: var(--text-secondary); font-size: 14px; }
+    .cc-total-value { font-size: 32px; font-weight: 700; color: var(--red); }
+
     .cash-amount {
       font-size: 58px;
       font-weight: 700;
@@ -156,7 +214,7 @@
     .cash-row-value.red { color: var(--red); }
 
     /* Keith's Metrics */
-    .keith-metrics { grid-column: span 8; }
+    .keith-metrics { grid-column: span 4; }
 
     .metrics-grid {
       display: grid;
@@ -360,15 +418,17 @@
     /* Responsive */
     @media (max-width: 1200px) {
       .dashboard-grid { grid-template-columns: repeat(6, 1fr); }
-      .cash-position, .wins-section, .momentum-section { grid-column: span 3; }
-      .keith-metrics, .alerts-section, .forecast-section, .week-stats { grid-column: span 6; }
+      .cash-position, .credit-cards { grid-column: span 3; }
+      .keith-metrics { grid-column: span 6; }
+      .wins-section, .momentum-section { grid-column: span 3; }
+      .alerts-section, .forecast-section, .week-stats { grid-column: span 6; }
       .metrics-grid { grid-template-columns: repeat(3, 1fr); }
     }
 
     @media (max-width: 768px) {
       .container { padding: 16px; }
       .dashboard-grid { grid-template-columns: 1fr; }
-      .cash-position, .keith-metrics, .wins-section, .momentum-section, 
+      .cash-position, .credit-cards, .keith-metrics, .wins-section, .momentum-section, 
       .alerts-section, .forecast-section, .week-stats { grid-column: span 1; }
       .metrics-grid { grid-template-columns: repeat(2, 1fr); }
       .header { flex-direction: column; align-items: flex-start; gap: 16px; }
@@ -410,6 +470,43 @@
             <span class="cash-row-label">Accounts Payable</span>
             <span class="cash-row-value red" id="ap-total">-$4,800</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Credit Cards -->
+      <div class="card credit-cards">
+        <div class="card-header"><span class="card-title">💳 Credit Cards</span></div>
+        <div class="cc-list" id="cc-list">
+          <div class="cc-item">
+            <div class="cc-header">
+              <span class="cc-name">American Express</span>
+            </div>
+            <div class="cc-balance">$3,247.82</div>
+            <div class="cc-progress-bar">
+              <div class="cc-progress-fill low" style="width: 22%"></div>
+            </div>
+            <div class="cc-details">
+              <span>22% used</span>
+              <span>$15,000 limit</span>
+            </div>
+          </div>
+          <div class="cc-item">
+            <div class="cc-header">
+              <span class="cc-name">Bank of Hawaii</span>
+            </div>
+            <div class="cc-balance">$1,892.45</div>
+            <div class="cc-progress-bar">
+              <div class="cc-progress-fill low" style="width: 19%"></div>
+            </div>
+            <div class="cc-details">
+              <span>19% used</span>
+              <span>$10,000 limit</span>
+            </div>
+          </div>
+        </div>
+        <div class="cc-total">
+          <span class="cc-total-label">Total Owed</span>
+          <span class="cc-total-value" id="cc-total">$5,140.27</span>
         </div>
       </div>
 
@@ -559,6 +656,11 @@
         document.getElementById('ap-total').textContent = '-' + formatCurrency(data.cashPosition.apTotal);
       }
 
+      // Credit Cards
+      if (data.creditCards) {
+        updateCreditCards(data.creditCards);
+      }
+
       // Forecast
       if (data.cashForecast) {
         const container = document.getElementById('forecast-chart');
@@ -575,8 +677,41 @@
       }
     }
 
+    function updateCreditCards(cards) {
+      const container = document.getElementById('cc-list');
+      let totalOwed = 0;
+      
+      container.innerHTML = cards.map(card => {
+        totalOwed += card.balance;
+        const usagePercent = Math.round((card.balance / card.limit) * 100);
+        const statusClass = usagePercent < 30 ? 'low' : usagePercent < 70 ? 'medium' : 'high';
+        
+        return `
+          <div class="cc-item">
+            <div class="cc-header">
+              <span class="cc-name">${card.name}</span>
+            </div>
+            <div class="cc-balance">${formatCurrencyDecimals(card.balance)}</div>
+            <div class="cc-progress-bar">
+              <div class="cc-progress-fill ${statusClass}" style="width: ${usagePercent}%"></div>
+            </div>
+            <div class="cc-details">
+              <span>${usagePercent}% used</span>
+              <span>${formatCurrency(card.limit)} limit</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      document.getElementById('cc-total').textContent = formatCurrencyDecimals(totalOwed);
+    }
+
     function formatCurrency(value) {
       return '$' + (value || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    function formatCurrencyDecimals(value) {
+      return '$' + (value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     setInterval(loadData, 5 * 60 * 1000);

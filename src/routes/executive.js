@@ -60,6 +60,10 @@ function getMockData() {
       apTotal: 4800,
       netCash: 41800
     },
+    creditCards: [
+      { name: 'American Express', balance: 3247.82, limit: 15000 },
+      { name: 'Bank of Hawaii', balance: 1892.45, limit: 10000 }
+    ],
     keithMetrics: {
       grossMargin: { value: '42.5', target: 40, status: 'good' },
       daysToInvoice: { value: '1.2', target: 3, status: 'good' },
