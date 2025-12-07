@@ -39,6 +39,7 @@ const licenseRoutes = require('./routes/license');
 const dashboardRoutes = require('./routes/dashboard');
 const executiveRoutes = require('./routes/executive');
 const operationsRoutes = require('./routes/operations');
+const smartReceiptRoutes = require('./routes/smart-receipt');
 
 // Create Express app
 const app = express();
@@ -63,6 +64,7 @@ app.use('/license', licenseRoutes);
 app.use('/dashboard', dashboardRoutes);
 app.use('/executive', executiveRoutes);
 app.use('/operations', operationsRoutes);
+app.use('/smart-receipt', smartReceiptRoutes);
 
 // Error handler
 app.use((err, req, res, next) => {
@@ -130,6 +132,10 @@ async function start() {
     logger.info('');
     logger.info('🔧 OPERATIONS CENTER');
     logger.info(`   Dashboard: http://localhost:${config.port}/operations`);
+    logger.info('');
+    logger.info('🤖 SMART RECEIPT BOT');
+    logger.info(`   Dashboard: http://localhost:${config.port}/smart-receipt`);
+    logger.info(`   SMS Webhook: http://localhost:${config.port}/smart-receipt/webhook/sms`);
     logger.info('='.repeat(60));
   });
 
