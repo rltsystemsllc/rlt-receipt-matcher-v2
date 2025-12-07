@@ -10,8 +10,13 @@
 const qboClient = require('../services/quickbooks/client');
 const logger = require('../utils/logger');
 
-// Track which transactions we've already processed
-const processedTransactions = new Set();
+// Track which transactions we've already ASKED about (persists in memory during session)
+// Key: transaction ID, Value: timestamp when asked
+const askedTransactions = new Map();
+
+// Don't re-ask about a transaction for at least 24 hours
+const ASK_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
 let lastCheckTime = null;
 
 /**
@@ -217,9 +222,11 @@ async function getUncategorizedTransactions() {
 
     // Filter to only uncategorized (no CustomerRef on any line)
     // Also exclude transactions that don't need receipts
+    // And skip transactions we've already asked about recently
     const uncategorized = allPurchases.filter(purchase => {
-      // Skip if already processed
-      if (processedTransactions.has(purchase.Id)) {
+      // Skip if we already asked about this recently (24hr cooldown)
+      const lastAsked = askedTransactions.get(purchase.Id);
+      if (lastAsked && (Date.now() - lastAsked) < ASK_COOLDOWN_MS) {
         return false;
       }
 
@@ -228,7 +235,7 @@ async function getUncategorizedTransactions() {
         return false;
       }
 
-      // Check if any line has a CustomerRef
+      // Check if any line has a CustomerRef (already categorized)
       const hasCustomer = purchase.Line?.some(line => 
         line.AccountBasedExpenseLineDetail?.CustomerRef
       );
@@ -263,17 +270,24 @@ async function getUncategorizedTransactions() {
 }
 
 /**
- * Mark a transaction as processed (so we don't ask about it again)
+ * Mark a transaction as asked (so we don't ask about it again for 24hrs)
  */
-function markProcessed(transactionId) {
-  processedTransactions.add(transactionId);
+function markAsked(transactionId) {
+  askedTransactions.set(transactionId, Date.now());
 }
 
 /**
- * Clear processed cache (for testing or reset)
+ * Clear asked cache (for testing or reset)
  */
-function clearProcessedCache() {
-  processedTransactions.clear();
+function clearAskedCache() {
+  askedTransactions.clear();
+}
+
+/**
+ * Get count of transactions we're currently waiting on responses for
+ */
+function getAskedCount() {
+  return askedTransactions.size;
 }
 
 /**
@@ -424,8 +438,9 @@ function getExclusionPatterns() {
 
 module.exports = {
   getUncategorizedTransactions,
-  markProcessed,
-  clearProcessedCache,
+  markAsked,
+  clearAskedCache,
+  getAskedCount,
   getDailySummary,
   getTransaction,
   findTransaction,

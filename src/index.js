@@ -161,15 +161,17 @@ async function start() {
 
 /**
  * Start the Smart Receipt Bot with periodic transaction checking
+ * DISABLED AUTO-CHECK - only manual checks via dashboard until tracking is fixed
  */
 function startSmartReceiptBot() {
   try {
-    // Initialize the bot
+    // Initialize the bot (but don't auto-check)
     smartReceiptBot.start();
     
-    // Check for uncategorized transactions every 15 minutes
+    // DISABLED: Auto-checking was spamming - only use manual "Check" button for now
+    // TODO: Add proper tracking to avoid re-asking about same transactions
+    /*
     const FIFTEEN_MINUTES = 15 * 60 * 1000;
-    
     setInterval(async () => {
       try {
         logger.info('🧾 Smart Receipt Bot: Checking for uncategorized transactions...');
@@ -178,8 +180,9 @@ function startSmartReceiptBot() {
         logger.error('Smart Receipt Bot check failed', { error: error.message });
       }
     }, FIFTEEN_MINUTES);
+    */
     
-    logger.info('🧾 Smart Receipt Bot started - checking QBO every 15 minutes');
+    logger.info('🧾 Smart Receipt Bot initialized - use dashboard to manually check transactions');
     
   } catch (error) {
     logger.error('Failed to start Smart Receipt Bot', { error: error.message });
