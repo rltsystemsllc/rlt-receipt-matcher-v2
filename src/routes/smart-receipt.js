@@ -165,6 +165,9 @@ router.get('/', async (req, res) => {
               <button class="btn btn-primary" onclick="setupWebhook()">📥 Setup SMS Webhook</button>
               <button class="btn btn-success" onclick="testQA()">❓ Test Q&A: "cash?"</button>
             </div>
+            <div id="result" style="margin-top: 15px; padding: 15px; background: #2d3748; border-radius: 8px; display: none;">
+              <pre style="margin: 0; color: #fff; white-space: pre-wrap;"></pre>
+            </div>
           </div>
 
           <div class="card">
@@ -207,12 +210,22 @@ router.get('/', async (req, res) => {
           async function checkNow() {
             const btn = event.target;
             btn.textContent = '⏳ Checking...';
+            const resultDiv = document.getElementById('result');
+            const resultPre = resultDiv.querySelector('pre');
             try {
               const res = await fetch('/smart-receipt/api/check', { method: 'POST' });
               const data = await res.json();
-              alert(data.message || 'Check complete!');
+              resultDiv.style.display = 'block';
+              resultPre.textContent = data.message || JSON.stringify(data, null, 2);
+              if (data.error) {
+                resultDiv.style.background = '#742a2a';
+              } else {
+                resultDiv.style.background = '#2d3748';
+              }
             } catch (e) {
-              alert('Error: ' + e.message);
+              resultDiv.style.display = 'block';
+              resultDiv.style.background = '#742a2a';
+              resultPre.textContent = 'Error: ' + e.message;
             }
             btn.textContent = '🔍 Check for New Transactions';
           }
