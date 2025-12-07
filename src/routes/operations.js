@@ -169,8 +169,8 @@ async function checkRingCentralStatus() {
 }
 
 async function checkSheetsStatus() {
-  const hasConfig = !!(config.google?.sheetsId);
-  return { connected: hasConfig };
+  const hasConfig = !!(config.sheets?.sheetId);
+  return { connected: hasConfig, sheetId: hasConfig ? '***' + config.sheets.sheetId.slice(-4) : null };
 }
 
 function getLastRunTime(botId) {
