@@ -1,105 +1,96 @@
 /**
- * Token Storage Service
- * Stores OAuth tokens in environment variables (for Railway) or files (for local dev)
+ * Token Store Service
  * 
- * This solves the problem of Railway's stateless deployments wiping token files.
- * Tokens are stored as base64-encoded JSON in environment variables.
+ * Handles OAuth token persistence
+ * - Saves to local files
+ * - Logs env var value for Railway persistence
  */
 
 const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
 
-// Environment variable names for each service
-const TOKEN_ENV_VARS = {
-  'quickbooks': 'QBO_TOKENS',
-  'gmail': 'GMAIL_TOKENS',
-  'sheets': 'SHEETS_TOKENS'
-};
-
 /**
- * Save tokens - stores in file and logs env var for Railway
+ * Save tokens to file and log for Railway env var
  */
-function saveTokens(service, tokens, filePath) {
+function saveTokens(serviceName, tokens, tokenPath) {
+  if (!tokens) return;
+  
   try {
-    // Always save to file for local dev
-    const dir = path.dirname(filePath);
+    // Ensure directory exists
+    const dir = path.dirname(tokenPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
     
-    // Add timestamp
-    const tokenData = {
-      ...tokens,
-      savedAt: new Date().toISOString()
-    };
+    // Save to file
+    const tokenData = JSON.stringify(tokens, null, 2);
+    fs.writeFileSync(tokenPath, tokenData, 'utf8');
     
-    fs.writeFileSync(filePath, JSON.stringify(tokenData, null, 2));
-    logger.info(`${service} tokens saved to file`);
+    // Log env var for Railway (copy this to Railway env vars)
+    const envVarName = `${serviceName.toUpperCase()}_TOKENS`;
+    logger.info(`Tokens saved for ${serviceName}`, { 
+      path: tokenPath,
+      envVarName,
+      envVarValue: JSON.stringify(tokens)
+    });
     
-    // Generate base64 for env var
-    const base64Token = Buffer.from(JSON.stringify(tokenData)).toString('base64');
-    const envVarName = TOKEN_ENV_VARS[service] || `${service.toUpperCase()}_TOKENS`;
+    // Also set in process.env for current runtime
+    process.env[envVarName] = JSON.stringify(tokens);
     
-    // Log instructions for Railway (visible in deployment logs)
-    console.log('\n' + '='.repeat(70));
-    console.log(`📋 COPY THIS TO RAILWAY VARIABLES TO PERSIST ${service.toUpperCase()} TOKENS:`);
-    console.log('='.repeat(70));
-    console.log(`${envVarName}=${base64Token}`);
-    console.log('='.repeat(70) + '\n');
-    
-    return true;
   } catch (error) {
-    logger.error(`Failed to save ${service} tokens`, { error: error.message });
-    return false;
+    logger.error(`Failed to save tokens for ${serviceName}`, { error: error.message });
   }
 }
 
 /**
- * Load tokens - checks env var first, then file
+ * Load tokens from env var or file
  */
-function loadTokens(service, filePath) {
-  const envVarName = TOKEN_ENV_VARS[service] || `${service.toUpperCase()}_TOKENS`;
+function loadTokens(serviceName, tokenPath) {
+  const envVarName = `${serviceName.toUpperCase()}_TOKENS`;
   
-  // First, check environment variable (Railway persistent storage)
-  const envToken = process.env[envVarName];
-  if (envToken) {
+  // First try environment variable (Railway)
+  if (process.env[envVarName]) {
     try {
-      const decoded = Buffer.from(envToken, 'base64').toString('utf8');
-      const tokens = JSON.parse(decoded);
-      logger.info(`${service} tokens loaded from env var ${envVarName}`);
+      const tokens = JSON.parse(process.env[envVarName]);
+      logger.info(`Tokens loaded from env var for ${serviceName}`);
       return tokens;
-    } catch (error) {
-      logger.warn(`Failed to parse ${service} tokens from env var`, { error: error.message });
+    } catch (e) {
+      logger.warn(`Failed to parse env tokens for ${serviceName}`, { error: e.message });
     }
   }
   
-  // Fall back to file (local development)
-  try {
-    if (fs.existsSync(filePath)) {
-      const data = fs.readFileSync(filePath, 'utf8');
+  // Then try file
+  if (fs.existsSync(tokenPath)) {
+    try {
+      const data = fs.readFileSync(tokenPath, 'utf8');
       const tokens = JSON.parse(data);
-      logger.info(`${service} tokens loaded from file`);
+      logger.info(`Tokens loaded from file for ${serviceName}`, { path: tokenPath });
       return tokens;
+    } catch (e) {
+      logger.warn(`Failed to load file tokens for ${serviceName}`, { error: e.message });
     }
-  } catch (error) {
-    logger.warn(`Failed to load ${service} tokens from file`, { error: error.message });
   }
   
   return null;
 }
 
 /**
- * Check if tokens exist (in env var or file)
+ * Clear tokens
  */
-function hasTokens(service, filePath) {
-  const envVarName = TOKEN_ENV_VARS[service] || `${service.toUpperCase()}_TOKENS`;
-  return !!process.env[envVarName] || fs.existsSync(filePath);
+function clearTokens(serviceName, tokenPath) {
+  const envVarName = `${serviceName.toUpperCase()}_TOKENS`;
+  delete process.env[envVarName];
+  
+  if (fs.existsSync(tokenPath)) {
+    fs.unlinkSync(tokenPath);
+  }
+  
+  logger.info(`Tokens cleared for ${serviceName}`);
 }
 
 module.exports = {
   saveTokens,
   loadTokens,
-  hasTokens,
-  TOKEN_ENV_VARS
+  clearTokens
 };
