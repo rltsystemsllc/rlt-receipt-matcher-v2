@@ -20,13 +20,15 @@ async function initialize() {
 
   try {
     // Try to load token from env var (Railway) or file (local)
+    // Check both SHEETS_TOKENS (new standard) and SHEETS_TOKEN_JSON (legacy)
     let tokens;
-    if (process.env.SHEETS_TOKEN_JSON) {
+    const envVarValue = process.env.SHEETS_TOKENS || process.env.SHEETS_TOKEN_JSON;
+    if (envVarValue) {
       try {
-        tokens = JSON.parse(process.env.SHEETS_TOKEN_JSON);
+        tokens = JSON.parse(envVarValue);
         logger.info('Bot 3 Sheets: Token loaded from environment variable');
       } catch {
-        logger.warn('Bot 3 Sheets: Failed to parse SHEETS_TOKEN_JSON env var');
+        logger.warn('Bot 3 Sheets: Failed to parse sheets token env var');
       }
     }
     
