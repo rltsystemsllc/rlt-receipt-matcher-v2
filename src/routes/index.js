@@ -10,13 +10,6 @@ const { client: qboClient } = require('../services/quickbooks');
 const logger = require('../utils/logger');
 
 /**
- * New Dashboard Mockup
- */
-router.get('/dashboard-new', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard-mockup.html'));
-});
-
-/**
  * Home route - Dashboard
  */
 router.get('/', (req, res) => {

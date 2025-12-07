@@ -455,20 +455,20 @@
       <!-- Cash Position -->
       <div class="card cash-position">
         <div class="card-header"><span class="card-title">💰 Cash Position</span></div>
-        <div class="cash-amount positive" id="net-cash">$41,800</div>
+        <div class="cash-amount" id="net-cash">---</div>
         <div class="cash-label">Net Cash Position</div>
         <div class="cash-breakdown">
           <div class="cash-row">
             <span class="cash-row-label">Bank Balance</span>
-            <span class="cash-row-value" id="bank-balance">$34,200</span>
+            <span class="cash-row-value" id="bank-balance">---</span>
           </div>
           <div class="cash-row">
             <span class="cash-row-label">Accounts Receivable</span>
-            <span class="cash-row-value green" id="ar-total">+$12,400</span>
+            <span class="cash-row-value green" id="ar-total">---</span>
           </div>
           <div class="cash-row">
             <span class="cash-row-label">Accounts Payable</span>
-            <span class="cash-row-value red" id="ap-total">-$4,800</span>
+            <span class="cash-row-value red" id="ap-total">---</span>
           </div>
         </div>
       </div>
@@ -479,34 +479,14 @@
         <div class="cc-list" id="cc-list">
           <div class="cc-item">
             <div class="cc-header">
-              <span class="cc-name">American Express</span>
+              <span class="cc-name">Loading...</span>
             </div>
-            <div class="cc-balance">$3,247.82</div>
-            <div class="cc-progress-bar">
-              <div class="cc-progress-fill low" style="width: 22%"></div>
-            </div>
-            <div class="cc-details">
-              <span>22% used</span>
-              <span>$15,000 limit</span>
-            </div>
-          </div>
-          <div class="cc-item">
-            <div class="cc-header">
-              <span class="cc-name">Bank of Hawaii</span>
-            </div>
-            <div class="cc-balance">$1,892.45</div>
-            <div class="cc-progress-bar">
-              <div class="cc-progress-fill low" style="width: 19%"></div>
-            </div>
-            <div class="cc-details">
-              <span>19% used</span>
-              <span>$10,000 limit</span>
-            </div>
+            <div class="cc-balance">---</div>
           </div>
         </div>
         <div class="cc-total">
           <span class="cc-total-label">Total Owed</span>
-          <span class="cc-total-value" id="cc-total">$5,140.27</span>
+          <span class="cc-total-value" id="cc-total">---</span>
         </div>
       </div>
 
@@ -518,29 +498,29 @@
         </div>
         <div class="metrics-grid" id="keith-metrics">
           <div class="metric-item">
-            <div class="metric-value good">42%</div>
+            <div class="metric-value">---</div>
             <div class="metric-label">Gross Margin</div>
-            <div class="metric-target"><span class="metric-status good"></span>Target: 40%+</div>
+            <div class="metric-target"><span class="metric-status"></span>Target: 40%+</div>
           </div>
           <div class="metric-item">
-            <div class="metric-value good">1.2</div>
+            <div class="metric-value">---</div>
             <div class="metric-label">Days to Invoice</div>
-            <div class="metric-target"><span class="metric-status good"></span>Target: &lt;3</div>
+            <div class="metric-target"><span class="metric-status"></span>Target: &lt;3</div>
           </div>
           <div class="metric-item">
-            <div class="metric-value warning">18</div>
+            <div class="metric-value">---</div>
             <div class="metric-label">Days to Collect</div>
-            <div class="metric-target"><span class="metric-status warning"></span>Target: &lt;14</div>
+            <div class="metric-target"><span class="metric-status"></span>Target: &lt;14</div>
           </div>
           <div class="metric-item">
-            <div class="metric-value good">78%</div>
+            <div class="metric-value">---</div>
             <div class="metric-label">Billable Util</div>
-            <div class="metric-target"><span class="metric-status good"></span>Target: 75%+</div>
+            <div class="metric-target"><span class="metric-status"></span>Target: 75%+</div>
           </div>
           <div class="metric-item">
-            <div class="metric-value good">8+</div>
+            <div class="metric-value">---</div>
             <div class="metric-label">Cash Runway</div>
-            <div class="metric-target"><span class="metric-status good"></span>Target: 6+ wks</div>
+            <div class="metric-target"><span class="metric-status"></span>Target: 6+ wks</div>
           </div>
         </div>
       </div>
@@ -550,16 +530,8 @@
         <div class="card-header"><span class="card-title">🏆 Wins This Week</span></div>
         <div class="wins-list" id="wins-list">
           <div class="win-item">
-            <div class="win-icon">✓</div>
-            <div><div class="win-text">3 Jobs Completed</div><div class="win-detail">Wailea, Smith, Johnson</div></div>
-          </div>
-          <div class="win-item">
-            <div class="win-icon">$</div>
-            <div><div class="win-text">$12,200 Collected</div><div class="win-detail">Fastest: 3 days (Smith)</div></div>
-          </div>
-          <div class="win-item">
-            <div class="win-icon">📈</div>
-            <div><div class="win-text">Revenue Up 17%</div><div class="win-detail">vs. last week</div></div>
+            <div class="win-icon">⏳</div>
+            <div><div class="win-text">Loading...</div></div>
           </div>
         </div>
       </div>
@@ -568,35 +540,25 @@
       <div class="card momentum-section">
         <div class="card-header"><span class="card-title">🔥 Momentum</span></div>
         <div class="momentum-gauge">
-          <div class="momentum-circle" style="--momentum: 80">
+          <div class="momentum-circle" style="--momentum: 0">
             <div class="momentum-inner">
-              <div class="momentum-value" id="momentum-value">80</div>
+              <div class="momentum-value" id="momentum-value">--</div>
               <div class="momentum-label">Score</div>
             </div>
           </div>
         </div>
-        <div class="momentum-status" id="momentum-status">STRONG 💪</div>
+        <div class="momentum-status" id="momentum-status">Loading...</div>
       </div>
 
       <!-- Alerts -->
       <div class="card alerts-section">
         <div class="card-header"><span class="card-title">⚠️ Requires Your Attention</span></div>
         <div class="alerts-list" id="alerts-list">
-          <div class="alert-item danger">
-            <div class="alert-icon">!</div>
+          <div class="alert-item">
+            <div class="alert-icon">⏳</div>
             <div class="alert-content">
-              <div class="alert-title">Invoice 18 Days Overdue</div>
-              <div class="alert-description">Johnson Residence - $4,500</div>
+              <div class="alert-title">Loading...</div>
             </div>
-            <button class="alert-action">Follow Up</button>
-          </div>
-          <div class="alert-item warning">
-            <div class="alert-icon">⏰</div>
-            <div class="alert-content">
-              <div class="alert-title">2 Receipts Need Jobs</div>
-              <div class="alert-description">Check SMS for assignment</div>
-            </div>
-            <button class="alert-action">View</button>
           </div>
         </div>
       </div>
@@ -615,19 +577,19 @@
         <div class="card-header"><span class="card-title">📅 This Week vs Last</span></div>
         <div class="stat-row">
           <span class="stat-label">Revenue</span>
-          <span><span class="stat-value">$8,400</span><span class="stat-change up">↑ 17%</span></span>
+          <span><span class="stat-value">---</span><span class="stat-change">---</span></span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Collected</span>
-          <span><span class="stat-value">$12,200</span><span class="stat-change up">↑ 8%</span></span>
+          <span><span class="stat-value">---</span><span class="stat-change">---</span></span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Expenses</span>
-          <span><span class="stat-value">$3,100</span><span class="stat-change down">↓ 12%</span></span>
+          <span><span class="stat-value">---</span><span class="stat-change">---</span></span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Jobs Completed</span>
-          <span><span class="stat-value">3</span><span class="stat-change up">↑ 1</span></span>
+          <span><span class="stat-value">---</span><span class="stat-change">---</span></span>
         </div>
       </div>
     </div>

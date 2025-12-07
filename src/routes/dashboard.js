@@ -126,17 +126,12 @@ router.get('/api/jobs', async (req, res) => {
         }))
       });
     } else {
-      // Return some default jobs if QBO not connected
+      // QBO not connected - return empty array, no fake data
       res.json({
-        success: true,
-        jobs: [
-          { id: '1', name: 'Smith Residence - Panel Upgrade', isProject: true },
-          { id: '2', name: 'Jones Kitchen Remodel', isProject: true },
-          { id: '3', name: '456 Oak St - Service Call', isProject: true },
-          { id: '4', name: 'Wailea Residence - New Construction', isProject: true },
-          { id: '5', name: 'Kihei Commercial - TI', isProject: true }
-        ],
-        source: 'default'
+        success: false,
+        jobs: [],
+        message: 'QuickBooks not connected - please authenticate',
+        source: 'none'
       });
     }
   } catch (error) {
