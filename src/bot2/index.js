@@ -57,7 +57,15 @@ async function processUrgentBilling() {
 
   try {
     // Check if Sheets is authenticated first
-    const sheetsReady = await sheetsService.isAuthenticated();
+    let sheetsReady = false;
+    try {
+      sheetsReady = await sheetsService.isAuthenticated();
+    } catch (authError) {
+      // Auth errors (like invalid_grant) should be silent - don't text about them
+      logger.info('Bot 2: Google Sheets auth check failed, skipping', { error: authError.message });
+      return;
+    }
+    
     if (!sheetsReady) {
       logger.info('Bot 2: Google Sheets not connected, skipping billing check');
       return; // Silent skip - don't error if sheets not connected
@@ -83,10 +91,19 @@ async function processUrgentBilling() {
   } catch (error) {
     logger.error('Bot 2: Error processing urgent billing', { error: error.message });
     
-    // Notify Jessica and Bobby of the error
-    await sendGroupText(
-      `⚠️ Bot 2 Error: Failed to process billing.\n\nError: ${error.message}\n\nPlease check the dashboard.`
-    );
+    // Don't send SMS for auth-related errors
+    const isAuthError = error.message?.includes('invalid_grant') || 
+                        error.message?.includes('not authenticated') ||
+                        error.message?.includes('Sheets not authenticated');
+    
+    if (!isAuthError) {
+      // Only notify for real billing errors, not auth issues
+      await sendGroupText(
+        `⚠️ Bot 2 Error: Failed to process billing.\n\nError: ${error.message}\n\nPlease check the dashboard.`
+      );
+    } else {
+      logger.info('Bot 2: Skipping SMS notification for auth error');
+    }
   } finally {
     isProcessing = false;
   }
