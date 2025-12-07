@@ -39,24 +39,19 @@ router.get('/gmail/callback', async (req, res) => {
     
     await gmailClient.handleCallback(code, tokenPath);
     
-    // For sheets auth, show the token for Railway persistence
+    // Show the token for Railway persistence
     let tokenDisplay = '';
-    if (isSheets) {
-      const fs = require('fs');
-      try {
-        const tokenData = fs.readFileSync('tokens/sheets-token.json', 'utf8');
-        const envVarValue = tokenData.replace(/\s+/g, '');
-        tokenDisplay = `
-          <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;">
-            <p><strong>⚠️ To persist on Railway, copy this to your Railway env vars:</strong></p>
-            <p style="font-family: monospace; font-size: 11px; word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 4px;">
-              SHEETS_TOKENS=${envVarValue}
-            </p>
-          </div>
-        `;
-      } catch (e) {
-        // Token file not readable
-      }
+    const envVarName = isSheets ? 'SHEETS_TOKENS' : 'GMAIL_TOKENS';
+    const tokenValue = process.env[envVarName];
+    if (tokenValue) {
+      tokenDisplay = `
+        <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;">
+          <p><strong>⚠️ To persist on Railway, copy this to your Railway env vars:</strong></p>
+          <p style="font-family: monospace; font-size: 11px; word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 4px;">
+            ${envVarName}=${tokenValue}
+          </p>
+        </div>
+      `;
     }
     
     const title = isSheets ? 'Google Sheets' : 'Gmail';
