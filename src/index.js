@@ -215,7 +215,7 @@ function setupSMSPolling() {
     try {
       const text = message.text || '';
       
-      logger.info('Received SMS via polling', { 
+      logger.info('📱 Received SMS via polling', { 
         from: message.from, 
         text: text.substring(0, 50) 
       });
@@ -231,6 +231,10 @@ function setupSMSPolling() {
         await groupSMS.send(result.response);
         
         logger.info('Q&A response sent');
+      } else {
+        // Not a Q&A question - route to Smart Receipt Bot for job assignment
+        logger.info('Routing to Smart Receipt Bot', { text });
+        await smartReceiptBot.handleSMSReply(message);
       }
     } catch (error) {
       logger.error('Error processing polled SMS', { error: error.message });
