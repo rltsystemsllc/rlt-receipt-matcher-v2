@@ -132,7 +132,9 @@ const EXCLUDED_VENDORS = [
  * Note: RLT Systems is OUR company, Read Lighting is a SUPPLIER
  */
 const ALWAYS_REQUIRE_RECEIPT = [
+  // Local electrical/hardware suppliers
   /read lighting/i,
+  /alpha supply/i,
   /ced\b/i,
   /consolidated electrical/i,
   /home depot/i,
@@ -140,7 +142,19 @@ const ALWAYS_REQUIRE_RECEIPT = [
   /hpm/i,
   /haiku hardware/i,
   /haiku true value/i,
-  /ace hardware/i
+  /ace hardware/i,
+  
+  // Online stores (often used for job materials)
+  /amazon/i,
+  /ebay/i,
+  /grainger/i,
+  /zoro/i,
+  /uline/i,
+  /mcmaster/i,
+  /digikey/i,
+  /mouser/i,
+  /electrical.*supply/i,
+  /platt electric/i
 ];
 
 /**
