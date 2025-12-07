@@ -1,6 +1,5 @@
 /**
- * RLT Automation System
- * Main entry point
+ * RLT Automation System - Main Entry Point
  */
 
 require('dotenv').config();
@@ -28,14 +27,11 @@ const executiveRoutes = require('./routes/executive');
 const operationsRoutes = require('./routes/operations');
 const smartReceiptRoutes = require('./routes/smart-receipt');
 
-// Create Express app
 const app = express();
 
-// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging
 app.use((req, res, next) => {
   logger.info(`${req.method} ${req.path}`, { ip: req.ip });
   next();
@@ -53,62 +49,36 @@ app.use('/executive', executiveRoutes);
 app.use('/operations', operationsRoutes);
 app.use('/smart-receipt', smartReceiptRoutes);
 
-// Error handler
 app.use((err, req, res, next) => {
-  logger.error('Unhandled error', { error: err.message, stack: err.stack });
-  res.status(500).json({
-    error: 'Internal server error',
-    message: config.isDev ? err.message : undefined
-  });
+  logger.error('Unhandled error', { error: err.message });
+  res.status(500).json({ error: 'Internal server error' });
 });
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-// Startup
 async function start() {
-  const bot1Errors = config.validateBot1();
-  const bot2Errors = config.validateBot2();
-  const bot3Errors = config.validateBot3();
-  
-  if (bot1Errors.length > 0) logger.warn('Bot 1 configuration warnings:', { errors: bot1Errors });
-  if (bot2Errors.length > 0) logger.warn('Bot 2 configuration warnings:', { errors: bot2Errors });
-  if (bot3Errors.length > 0) logger.warn('Bot 3 configuration warnings:', { errors: bot3Errors });
-
   const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+  
   app.listen(config.port, host, () => {
     logger.info('='.repeat(60));
-    logger.info('🚀 RLT AUTOMATION SYSTEM Started');
-    logger.info('='.repeat(60));
-    logger.info(`Server: http://localhost:${config.port}`);
-    logger.info(`Environment: ${config.nodeEnv}`);
+    logger.info('🚀 RLT AUTOMATION SYSTEM');
+    logger.info(`   Server: http://localhost:${config.port}`);
     logger.info('');
-    logger.info('🟧 BOT 1 - Receipt Processor');
-    logger.info(`   Dashboard: http://localhost:${config.port}/`);
-    logger.info('');
-    logger.info('🟩 BOT 2 - Invoice Drafter');
-    logger.info(`   Dashboard: http://localhost:${config.port}/bot2`);
-    logger.info('');
-    logger.info('🤖 SMART RECEIPT BOT');
-    logger.info(`   Dashboard: http://localhost:${config.port}/smart-receipt`);
-    logger.info('');
-    logger.info('📊 EXECUTIVE SCORECARD');
-    logger.info(`   Dashboard: http://localhost:${config.port}/executive`);
+    logger.info('🤖 SMART RECEIPT BOT: /smart-receipt');
+    logger.info('📊 EXECUTIVE SCORECARD: /executive');
+    logger.info('🔧 OPERATIONS CENTER: /operations');
     logger.info('='.repeat(60));
   });
 
-  // Start schedulers
   scheduler.start();
   bot2.start();
   smsAlerts.start();
   
-  // Start Smart Receipt Bot
   smartReceiptBot.start();
-  logger.info('🧾 Smart Receipt Bot initialized');
+  logger.info('🧾 Smart Receipt Bot ready (only asks about transactions from 12/1/25+)');
   
-  // Start SMS polling for replies
   setupSMSPolling();
 }
 
@@ -123,30 +93,27 @@ function setupSMSPolling() {
   ];
   
   function isDataQuestion(text) {
-    if (!text) return false;
-    return questionPatterns.some(p => p.test(text));
+    return text && questionPatterns.some(p => p.test(text));
   }
   
   ringcentral.onIncomingMessage(async (message) => {
     try {
       const text = message.text || '';
-      logger.info('📱 Received SMS', { from: message.from, text: text.substring(0, 50) });
+      logger.info('📱 SMS received', { from: message.from, text: text.substring(0, 50) });
       
       if (isDataQuestion(text)) {
-        logger.info('Processing Q&A question', { question: text });
         const result = await dataQABot.processQuestion(text);
         await groupSMS.send(result.response);
       } else {
-        logger.info('Routing to Smart Receipt Bot', { text });
         await smartReceiptBot.handleSMSReply(message);
       }
     } catch (error) {
-      logger.error('Error processing SMS', { error: error.message });
+      logger.error('SMS processing error', { error: error.message });
     }
   });
   
   ringcentral.startPolling(10000);
-  logger.info('📱 SMS polling enabled');
+  logger.info('📱 SMS polling active');
 }
 
 process.on('SIGINT', async () => {
@@ -157,21 +124,8 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-process.on('SIGTERM', async () => {
-  logger.info('Received SIGTERM, shutting down...');
-  process.exit(0);
-});
+process.on('SIGTERM', () => process.exit(0));
+process.on('uncaughtException', (e) => { logger.error('Uncaught', { error: e.message }); process.exit(1); });
+process.on('unhandledRejection', (r) => logger.error('Unhandled rejection', { reason: r }));
 
-process.on('uncaughtException', (error) => {
-  logger.error('Uncaught exception', { error: error.message, stack: error.stack });
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled rejection', { reason });
-});
-
-start().catch((error) => {
-  logger.error('Failed to start', { error: error.message });
-  process.exit(1);
-});
+start().catch(e => { logger.error('Start failed', { error: e.message }); process.exit(1); });

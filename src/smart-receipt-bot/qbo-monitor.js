@@ -196,7 +196,7 @@ function shouldExcludeTransaction(purchase) {
  * Get uncategorized transactions from QBO
  * These are transactions that:
  * - Don't have a CustomerRef (no job assigned)
- * - Are recent (within last 30 days)
+ * - Are from 12/1/2025 or newer (don't ask about old transactions)
  */
 async function getUncategorizedTransactions() {
   try {
@@ -206,10 +206,10 @@ async function getUncategorizedTransactions() {
       throw new Error('QuickBooks not authenticated');
     }
 
-    // Query for purchases without CustomerRef in the last 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
+    // Only ask about transactions from 12/1/2025 onward
+    // Don't bother user about older historical transactions
+    const cutoffDate = '2025-12-01';
+    const dateStr = cutoffDate;
 
     // Get all recent purchases
     const response = await qboClient.makeApiCall('GET',
