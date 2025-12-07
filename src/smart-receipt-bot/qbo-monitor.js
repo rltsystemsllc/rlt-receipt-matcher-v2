@@ -15,6 +15,117 @@ const processedTransactions = new Set();
 let lastCheckTime = null;
 
 /**
+ * Transactions to EXCLUDE from receipt requests
+ * These are transactions that don't typically need receipts
+ */
+const EXCLUDED_VENDORS = [
+  // Payroll
+  /quickbooks payroll/i,
+  /intuit payroll/i,
+  /adp/i,
+  /gusto/i,
+  /paychex/i,
+  
+  // Payroll Taxes
+  /payroll tax/i,
+  /eftps/i,
+  /state tax/i,
+  /federal tax/i,
+  /irs/i,
+  /dept.*revenue/i,
+  
+  // Credit Card Payments (paying off cards)
+  /american express.*payment/i,
+  /amex.*payment/i,
+  /bank of hawaii.*payment/i,
+  /credit card payment/i,
+  /card payment/i,
+  /chase.*payment/i,
+  /citi.*payment/i,
+  /capital one.*payment/i,
+  /discover.*payment/i,
+  /visa.*payment/i,
+  /mastercard.*payment/i,
+  
+  // Bank Transfers
+  /transfer/i,
+  /ach/i,
+  /wire transfer/i,
+  
+  // Bank Fees
+  /bank fee/i,
+  /service charge/i,
+  /overdraft/i,
+  /nsf fee/i,
+  /monthly fee/i,
+  /maintenance fee/i,
+  
+  // Interest & Finance Charges
+  /interest charge/i,
+  /finance charge/i,
+  /interest expense/i,
+  /interest payment/i,
+  
+  // Loan Payments
+  /loan payment/i,
+  /line of credit/i,
+  /loc payment/i,
+  /mortgage/i,
+  
+  // Owner Transactions
+  /owner.*draw/i,
+  /distribution/i,
+  /shareholder/i,
+  /member draw/i,
+  
+  // Insurance (recurring, auto-billed)
+  /insurance.*premium/i,
+  /liberty mutual/i,
+  /state farm/i,
+  /progressive/i,
+  /geico/i,
+  /allstate/i,
+  
+  // Utilities (recurring, often auto-pay)
+  /hawaiian electric/i,
+  /heco/i,
+  /spectrum/i,
+  /hawaiian tel/i,
+  /water.*bill/i,
+  
+  // Rent (recurring)
+  /rent payment/i,
+  /lease payment/i,
+  
+  // QuickBooks/Intuit fees
+  /intuit/i,
+  /quickbooks/i,
+  /qb online/i
+];
+
+/**
+ * Check if a transaction should be excluded from receipt requests
+ */
+function shouldExcludeTransaction(purchase) {
+  const vendor = purchase.EntityRef?.name || '';
+  const memo = purchase.PrivateNote || '';
+  const accountName = purchase.AccountRef?.name || '';
+  
+  // Check vendor name against exclusion patterns
+  for (const pattern of EXCLUDED_VENDORS) {
+    if (pattern.test(vendor) || pattern.test(memo) || pattern.test(accountName)) {
+      logger.info('Excluding transaction (matches exclusion pattern)', { 
+        vendor, 
+        pattern: pattern.toString() 
+      });
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Get uncategorized transactions from QBO
  * These are transactions that:
  * - Don't have a CustomerRef (no job assigned)
@@ -43,9 +154,15 @@ async function getUncategorizedTransactions() {
     const allPurchases = response.QueryResponse?.Purchase || [];
 
     // Filter to only uncategorized (no CustomerRef on any line)
+    // Also exclude transactions that don't need receipts
     const uncategorized = allPurchases.filter(purchase => {
       // Skip if already processed
       if (processedTransactions.has(purchase.Id)) {
+        return false;
+      }
+
+      // Skip excluded transactions (payroll, transfers, etc.)
+      if (shouldExcludeTransaction(purchase)) {
         return false;
       }
 
@@ -236,12 +353,21 @@ async function findTransaction(vendor, amount, date) {
   }
 }
 
+/**
+ * Get the list of excluded vendor patterns (for reference/debugging)
+ */
+function getExclusionPatterns() {
+  return EXCLUDED_VENDORS.map(p => p.toString().replace(/^\/|\/i$/g, ''));
+}
+
 module.exports = {
   getUncategorizedTransactions,
   markProcessed,
   clearProcessedCache,
   getDailySummary,
   getTransaction,
-  findTransaction
+  findTransaction,
+  shouldExcludeTransaction,
+  getExclusionPatterns
 };
 
