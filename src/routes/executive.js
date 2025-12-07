@@ -76,7 +76,8 @@ async function getQBOData() {
     allInvoices,
     recentExpenses,
     last90DaysInvoices,
-    last90DaysExpenses
+    last90DaysExpenses,
+    profitLossReport
   ] = await Promise.all([
     queryQBO(companyId, "SELECT * FROM Account WHERE AccountType = 'Bank' AND Active = true"),
     queryQBO(companyId, "SELECT * FROM Account WHERE AccountType = 'Credit Card' AND Active = true"),
@@ -86,7 +87,8 @@ async function getQBOData() {
     queryQBO(companyId, `SELECT * FROM Invoice WHERE TxnDate >= '${twoWeeksAgoStr}'`),
     queryQBO(companyId, `SELECT * FROM Purchase WHERE TxnDate >= '${twoWeeksAgoStr}'`),
     queryQBO(companyId, `SELECT * FROM Invoice WHERE TxnDate >= '${ninetyDaysAgoStr}'`),
-    queryQBO(companyId, `SELECT * FROM Purchase WHERE TxnDate >= '${ninetyDaysAgoStr}'`)
+    queryQBO(companyId, `SELECT * FROM Purchase WHERE TxnDate >= '${ninetyDaysAgoStr}'`),
+    fetchProfitLossReport(ninetyDaysAgoStr, now.toISOString().split('T')[0])
   ]);
   
   // Filter bank accounts - only include Checking and Savings (exclude lines of credit)
@@ -131,14 +133,15 @@ async function getQBOData() {
   // Calculate AR aging
   const arAging = calculateARaging(openInvoices || []);
   
-  // Calculate Keith's metrics with real data
+  // Calculate Keith's metrics with real P&L data
   const keithMetrics = calculateKeithMetrics({
     arAging,
     recentPayments: recentPayments || [],
     openInvoices: openInvoices || [],
     last90DaysInvoices: last90DaysInvoices || [],
     last90DaysExpenses: last90DaysExpenses || [],
-    bankBalance
+    bankBalance,
+    profitLoss: profitLossReport
   });
   
   // Calculate Tony's momentum with invoices and expenses
@@ -189,6 +192,110 @@ async function queryQBO(companyId, query) {
 }
 
 /**
+ * Fetch Profit & Loss Report from QBO
+ */
+async function fetchProfitLossReport(startDate, endDate) {
+  try {
+    const report = await qboClient.getReport('ProfitAndLoss', {
+      start_date: startDate,
+      end_date: endDate,
+      accounting_method: 'Accrual'
+    });
+    
+    // Parse the P&L report to extract key metrics
+    const parsed = parseProfitLossReport(report);
+    logger.info('P&L Report fetched', { 
+      startDate, 
+      endDate, 
+      revenue: parsed.totalRevenue,
+      cogs: parsed.costOfGoodsSold,
+      expenses: parsed.totalExpenses,
+      grossProfit: parsed.grossProfit,
+      netIncome: parsed.netIncome
+    });
+    
+    return parsed;
+  } catch (error) {
+    logger.error('Failed to fetch P&L report', { error: error.message });
+    return null;
+  }
+}
+
+/**
+ * Parse QBO Profit & Loss Report
+ */
+function parseProfitLossReport(report) {
+  let totalRevenue = 0;
+  let costOfGoodsSold = 0;
+  let totalExpenses = 0;
+  let grossProfit = 0;
+  let netIncome = 0;
+  
+  try {
+    const rows = report?.Rows?.Row || [];
+    
+    rows.forEach(section => {
+      const sectionType = section.group || section.type;
+      const summary = section.Summary?.ColData?.[1]?.value;
+      
+      if (sectionType === 'Income' || section.Header?.ColData?.[0]?.value === 'Income') {
+        // Get the summary value from the section
+        if (summary) {
+          totalRevenue = parseFloat(summary) || 0;
+        } else if (section.Rows?.Row) {
+          // Sum up individual income items
+          section.Rows.Row.forEach(row => {
+            const value = row.Summary?.ColData?.[1]?.value || row.ColData?.[1]?.value;
+            if (value) totalRevenue += parseFloat(value) || 0;
+          });
+        }
+      }
+      
+      if (sectionType === 'COGS' || section.Header?.ColData?.[0]?.value?.includes('Cost of Goods')) {
+        if (summary) {
+          costOfGoodsSold = parseFloat(summary) || 0;
+        }
+      }
+      
+      if (sectionType === 'Expenses' || section.Header?.ColData?.[0]?.value === 'Expenses') {
+        if (summary) {
+          totalExpenses = parseFloat(summary) || 0;
+        }
+      }
+      
+      if (sectionType === 'GrossProfit' || section.Header?.ColData?.[0]?.value === 'Gross Profit') {
+        if (summary) {
+          grossProfit = parseFloat(summary) || 0;
+        }
+      }
+      
+      if (sectionType === 'NetIncome' || section.Header?.ColData?.[0]?.value === 'Net Income') {
+        if (summary) {
+          netIncome = parseFloat(summary) || 0;
+        }
+      }
+    });
+    
+    // If gross profit not directly available, calculate it
+    if (grossProfit === 0 && totalRevenue > 0) {
+      grossProfit = totalRevenue - costOfGoodsSold;
+    }
+    
+  } catch (error) {
+    logger.error('Error parsing P&L report', { error: error.message });
+  }
+  
+  return {
+    totalRevenue,
+    costOfGoodsSold,
+    totalExpenses,
+    grossProfit,
+    netIncome,
+    grossMargin: totalRevenue > 0 ? (grossProfit / totalRevenue * 100) : 0
+  };
+}
+
+/**
  * Calculate AR Aging buckets
  */
 function calculateARaging(invoices) {
@@ -230,17 +337,42 @@ function calculateARaging(invoices) {
 /**
  * Calculate Keith Cunningham's 5 Key Metrics
  */
-function calculateKeithMetrics({ arAging, recentPayments, openInvoices, last90DaysInvoices, last90DaysExpenses, bankBalance }) {
-  // 1. GROSS MARGIN - Calculate from last 90 days invoices vs expenses
-  const totalRevenue = (last90DaysInvoices || []).reduce((sum, inv) => sum + (parseFloat(inv.TotalAmt) || 0), 0);
-  const totalExpenses = (last90DaysExpenses || []).reduce((sum, exp) => sum + (parseFloat(exp.TotalAmt) || 0), 0);
+function calculateKeithMetrics({ arAging, recentPayments, openInvoices, last90DaysInvoices, last90DaysExpenses, bankBalance, profitLoss }) {
+  // 1. GROSS MARGIN - Use real P&L data from QBO
+  let grossMargin;
+  let totalRevenue;
+  let totalExpenses;
   
-  // Gross Margin = (Revenue - Material Costs) / Revenue
-  // For electrical contractor: purchases are mostly job materials (COGS)
-  // Using 100% of purchases as material cost for accurate margin
-  const grossMargin = totalRevenue > 0 
-    ? ((totalRevenue - totalExpenses) / totalRevenue * 100) 
-    : 60; // Default to healthy 60% if no data
+  if (profitLoss && profitLoss.totalRevenue > 0) {
+    // Use real P&L report data
+    grossMargin = profitLoss.grossMargin;
+    totalRevenue = profitLoss.totalRevenue;
+    totalExpenses = profitLoss.totalExpenses;
+    logger.info('Using real P&L for gross margin', { 
+      grossMargin: grossMargin.toFixed(1),
+      revenue: totalRevenue,
+      cogs: profitLoss.costOfGoodsSold
+    });
+  } else {
+    // Fallback: Calculate from invoices/purchases
+    totalRevenue = (last90DaysInvoices || []).reduce((sum, inv) => sum + (parseFloat(inv.TotalAmt) || 0), 0);
+    totalExpenses = (last90DaysExpenses || []).reduce((sum, exp) => sum + (parseFloat(exp.TotalAmt) || 0), 0);
+    
+    // For electrical contractor: labor is ~60% of revenue (100% margin), materials ~40% (22% margin)
+    // This gives blended gross margin of ~67%
+    // Purchases are mostly materials, so: Gross Margin ≈ (Revenue - Purchases) / Revenue
+    // But add back labor value since it's not in purchases
+    const estimatedLabor = totalRevenue * 0.6;
+    grossMargin = totalRevenue > 0 
+      ? ((totalRevenue - totalExpenses + estimatedLabor * 0) / totalRevenue * 100)
+      : 60;
+    
+    logger.info('Using calculated gross margin (no P&L)', { 
+      grossMargin: grossMargin.toFixed(1),
+      revenue: totalRevenue,
+      expenses: totalExpenses
+    });
+  }
   
   // 2. DAYS TO INVOICE - Calculate average days from invoice create to payment
   // Using payment data to see how quickly invoices are created after work

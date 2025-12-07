@@ -282,6 +282,26 @@ class QuickBooksClient {
   }
 
   /**
+   * Fetch a QBO report (P&L, Balance Sheet, etc.)
+   * @param {string} reportName - Report name (e.g., 'ProfitAndLoss', 'BalanceSheet')
+   * @param {object} params - Report parameters (start_date, end_date, etc.)
+   */
+  async getReport(reportName, params = {}) {
+    const queryParams = new URLSearchParams();
+    
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== null) {
+        queryParams.append(key, value);
+      }
+    }
+    
+    const queryString = queryParams.toString();
+    const endpoint = `/reports/${reportName}${queryString ? '?' + queryString : ''}`;
+    
+    return this.makeApiCall('GET', endpoint);
+  }
+
+  /**
    * Save tokens to file and env var
    */
   saveTokens(tokens) {
