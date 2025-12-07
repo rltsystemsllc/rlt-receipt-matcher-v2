@@ -534,5 +534,79 @@ router.post('/api/ask-sms', async (req, res) => {
   }
 });
 
+/**
+ * API: Get recent transactions from QBO (for analyzing exclusions)
+ */
+router.get('/api/recent-transactions', async (req, res) => {
+  try {
+    const qboClient = require('../services/quickbooks/client');
+    
+    const isAuth = await qboClient.authenticate();
+    if (!isAuth) {
+      return res.status(401).json({ success: false, error: 'QBO not authenticated' });
+    }
+
+    // Get purchases from last 60 days
+    const sixtyDaysAgo = new Date();
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+    const dateStr = sixtyDaysAgo.toISOString().split('T')[0];
+
+    const response = await qboClient.makeApiCall('GET',
+      `/query?query=${encodeURIComponent(
+        `SELECT * FROM Purchase WHERE TxnDate >= '${dateStr}' ORDER BY TxnDate DESC MAXRESULTS 200`
+      )}`
+    );
+
+    const purchases = response.QueryResponse?.Purchase || [];
+
+    // Get unique vendors with counts and amounts
+    const vendorStats = {};
+    for (const p of purchases) {
+      const vendor = p.EntityRef?.name || 'Unknown';
+      const accountName = p.AccountRef?.name || '';
+      const key = vendor;
+      
+      if (!vendorStats[key]) {
+        vendorStats[key] = {
+          vendor,
+          accountName,
+          count: 0,
+          totalAmount: 0,
+          hasCustomer: false,
+          excluded: qboMonitor.shouldExcludeTransaction(p),
+          sample: {
+            date: p.TxnDate,
+            amount: p.TotalAmt,
+            memo: p.PrivateNote || ''
+          }
+        };
+      }
+      
+      vendorStats[key].count++;
+      vendorStats[key].totalAmount += p.TotalAmt;
+      
+      const hasCustomer = p.Line?.some(line => 
+        line.AccountBasedExpenseLineDetail?.CustomerRef
+      );
+      if (hasCustomer) vendorStats[key].hasCustomer = true;
+    }
+
+    // Convert to array and sort by count
+    const vendors = Object.values(vendorStats).sort((a, b) => b.count - a.count);
+
+    res.json({
+      success: true,
+      totalTransactions: purchases.length,
+      uniqueVendors: vendors.length,
+      vendors,
+      exclusionPatterns: qboMonitor.getExclusionPatterns()
+    });
+
+  } catch (error) {
+    logger.error('Recent transactions API error', { error: error.message });
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 module.exports = router;
 
