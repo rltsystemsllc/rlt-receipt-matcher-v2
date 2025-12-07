@@ -129,10 +129,10 @@ const EXCLUDED_VENDORS = [
 /**
  * Vendors that ALWAYS need receipts (never exclude)
  * Even if they match an exclusion pattern above
+ * Note: RLT Systems is OUR company, Read Lighting is a SUPPLIER
  */
 const ALWAYS_REQUIRE_RECEIPT = [
   /read lighting/i,
-  /rlt/i,
   /ced\b/i,
   /consolidated electrical/i,
   /home depot/i,
