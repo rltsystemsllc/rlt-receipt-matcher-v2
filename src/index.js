@@ -26,6 +26,7 @@ const express = require('express');
 const config = require('./config');
 const logger = require('./utils/logger');
 const scheduler = require('./services/scheduler');
+const smsAlerts = require('./services/sms-alerts');
 const bot2 = require('./bot2');
 
 // Routes
@@ -137,6 +138,9 @@ async function start() {
   
   // Start Bot 2 scheduler (invoice drafting)
   bot2.start();
+  
+  // Start SMS Alerts scheduler (Monday scorecard, Friday wins)
+  smsAlerts.start();
 }
 
 // Handle shutdown gracefully
@@ -144,6 +148,7 @@ process.on('SIGINT', async () => {
   logger.info('Shutting down...');
   scheduler.stop();
   bot2.stop();
+  smsAlerts.stop();
   
   // Cleanup OCR worker if initialized
   try {

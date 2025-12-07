@@ -1,12 +1,17 @@
 /**
  * Invoice Service for Bot 2
  * Creates draft invoices in QuickBooks and manages sending
+ * 
+ * AI-Enhanced Features:
+ * - Smart invoice descriptions from Bobby's raw notes
+ * - Intelligent job matching with fuzzy search
  */
 
 const qboClient = require('../../services/quickbooks/client');
 const qboUpdater = require('../../smart-receipt-bot/qbo-updater');
 const config = require('../../config');
 const logger = require('../../utils/logger');
+const aiService = require('../ai');
 
 /**
  * Get billable expenses from QBO for a job
@@ -240,9 +245,9 @@ async function createDraftInvoice(jobName, rows) {
   const lines = [];
   let lineNum = 1;
 
-  // Standard labor line
+  // Standard labor line (with AI-enhanced description)
   if (preview.labor.standardHours > 0) {
-    const laborDesc = buildLaborDescription(preview.labor, false);
+    const laborDesc = await buildLaborDescription(preview.labor, false);
     lines.push({
       Id: String(lineNum),
       LineNum: lineNum,
@@ -257,9 +262,9 @@ async function createDraftInvoice(jobName, rows) {
     lineNum++;
   }
 
-  // Emergency labor line
+  // Emergency labor line (with AI-enhanced description)
   if (preview.labor.emergencyHours > 0) {
-    const laborDesc = buildLaborDescription(preview.labor, true);
+    const laborDesc = await buildLaborDescription(preview.labor, true);
     lines.push({
       Id: String(lineNum),
       LineNum: lineNum,
@@ -323,8 +328,9 @@ async function createDraftInvoice(jobName, rows) {
 
 /**
  * Build labor description for invoice line
+ * Uses AI to generate professional descriptions from Bobby's notes
  */
-function buildLaborDescription(labor, isEmergency) {
+async function buildLaborDescription(labor, isEmergency) {
   const rate = isEmergency ? labor.emergencyRate : labor.standardRate;
   const hours = isEmergency ? labor.emergencyHours : labor.standardHours;
   const rateType = isEmergency ? 'Emergency Rate (Same-Day/Weekend)' : 'Standard Rate';
@@ -335,12 +341,50 @@ function buildLaborDescription(labor, isEmergency) {
     desc += `Phase(s): ${labor.phases.join(', ')}\n`;
   }
   
-  desc += '\nWork Performed:\n';
-  
-  for (const detail of labor.dateDetails) {
-    if ((isEmergency && detail.isEmergency) || (!isEmergency && !detail.isEmergency)) {
-      desc += `• ${detail.date}: ${detail.hours} hrs - ${detail.description}\n`;
+  desc += '\n';
+
+  // Get relevant date details for this rate type
+  const relevantDetails = labor.dateDetails.filter(detail => 
+    (isEmergency && detail.isEmergency) || (!isEmergency && !detail.isEmergency)
+  );
+
+  // Try AI-generated description
+  if (aiService.isAvailable() && relevantDetails.length > 0) {
+    try {
+      // Combine all descriptions for AI processing
+      const rawNotes = relevantDetails.map(d => d.description).join('. ');
+      const materials = labor.descriptions
+        .filter(d => d.materials)
+        .map(d => d.materials);
+
+      const aiDescription = await aiService.generateInvoiceDescription({
+        rawNotes,
+        phase: labor.phases[0] || 'Service',
+        hours,
+        materials,
+        isEmergency
+      });
+
+      desc += 'Work Performed:\n';
+      desc += aiDescription;
+      
+      // Add date breakdown at the end
+      desc += '\n\nDate Breakdown:\n';
+      for (const detail of relevantDetails) {
+        desc += `• ${detail.date}: ${detail.hours} hrs\n`;
+      }
+
+      return desc.trim();
+
+    } catch (error) {
+      logger.warn('AI description failed, using fallback', { error: error.message });
     }
+  }
+
+  // Fallback: Manual formatting
+  desc += 'Work Performed:\n';
+  for (const detail of relevantDetails) {
+    desc += `• ${detail.date}: ${detail.hours} hrs - ${detail.description}\n`;
   }
 
   return desc.trim();

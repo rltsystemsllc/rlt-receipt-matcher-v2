@@ -276,6 +276,25 @@
         </div>
       </div>
 
+      <!-- SMS Alerts -->
+      <div class="card" style="grid-column: span 12;">
+        <div class="card-title">📱 SMS Alerts</div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <button class="trigger-btn" onclick="sendSMS('monday')" id="sms-monday">
+            📅 Send Monday Scorecard
+          </button>
+          <button class="trigger-btn" onclick="sendSMS('friday')" id="sms-friday">
+            🎉 Send Friday Wins
+          </button>
+          <button class="trigger-btn" onclick="sendSMS('test')" id="sms-test" style="background: var(--yellow-bg); border-color: var(--yellow); color: var(--yellow);">
+            🧪 Send Test Message
+          </button>
+        </div>
+        <p style="margin-top: 12px; font-size: 12px; color: var(--text-muted);">
+          Auto-schedule: Monday 7am & Friday 4pm Hawaii time
+        </p>
+      </div>
+
       <!-- Quick Links -->
       <div class="card quick-links">
         <div class="card-title">🔗 Quick Actions</div>
@@ -437,6 +456,35 @@
 
     function formatLabel(key) {
       return key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+    }
+
+    async function sendSMS(type) {
+      const btn = document.getElementById(`sms-${type}`);
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '📤 Sending...';
+      
+      try {
+        const response = await fetch(`/operations/api/sms/${type}`, { method: 'POST' });
+        const result = await response.json();
+        
+        if (result.success) {
+          btn.textContent = '✓ Sent!';
+          setTimeout(() => {
+            btn.textContent = originalText;
+            btn.disabled = false;
+          }, 3000);
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        btn.textContent = '✗ Failed';
+        console.error('SMS error:', error);
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }, 3000);
+      }
     }
 
     // Auto-refresh every 30 seconds

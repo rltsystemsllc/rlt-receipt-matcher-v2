@@ -2,7 +2,7 @@
  * QBO Updater
  * 
  * Updates QuickBooks transactions with:
- * - Customer/Job assignment
+ * - Customer/Job assignment (AI-enhanced matching)
  * - Billable status
  * - Taxable status
  * - Receipt attachments
@@ -10,6 +10,14 @@
 
 const qboClient = require('../services/quickbooks/client');
 const logger = require('../utils/logger');
+
+// Try to load Bot 2 AI service for smart matching
+let aiService = null;
+try {
+  aiService = require('../bot2/ai');
+} catch (e) {
+  logger.info('Bot 2 AI service not available for job matching');
+}
 
 // Cache for customers/jobs
 const customerCache = new Map();
@@ -91,8 +99,12 @@ async function updateTransaction(transactionId, options) {
 
 /**
  * Find or create a customer/job in QBO
+ * Uses AI-enhanced matching when available
+ * 
+ * @param {string} jobName - Job name to search for
+ * @param {Object} context - Optional context for AI matching (vendor, items, date)
  */
-async function findOrCreateCustomer(jobName) {
+async function findOrCreateCustomer(jobName, context = {}) {
   try {
     // Check cache first
     const cacheKey = jobName.toLowerCase().trim();
@@ -100,47 +112,86 @@ async function findOrCreateCustomer(jobName) {
       return customerCache.get(cacheKey);
     }
 
-    // Search for existing customer
+    // Get all active customers for matching
     const searchResponse = await qboClient.makeApiCall('GET',
       `/query?query=${encodeURIComponent(
-        `SELECT * FROM Customer WHERE DisplayName LIKE '%${jobName.replace(/'/g, "\\'")}%' AND Active = true`
+        `SELECT * FROM Customer WHERE Active = true MAXRESULTS 100`
       )}`
     );
 
     const customers = searchResponse.QueryResponse?.Customer || [];
 
-    // Try to find best match
+    // Try exact match first
     let customer = customers.find(c => 
       c.DisplayName.toLowerCase() === jobName.toLowerCase()
     );
 
-    // If no exact match, try partial match
+    if (customer) {
+      customerCache.set(cacheKey, customer);
+      logger.info('Exact customer match found', { name: customer.DisplayName });
+      return customer;
+    }
+
+    // Try AI-enhanced matching if available
+    if (aiService && aiService.isAvailable() && customers.length > 0) {
+      try {
+        const candidates = customers.map(c => ({
+          id: c.Id,
+          name: c.DisplayName,
+          description: c.Notes || ''
+        }));
+
+        const aiMatch = await aiService.findBestJobMatch(jobName, candidates, context);
+        
+        if (aiMatch.match && aiMatch.confidence >= 75) {
+          customer = customers.find(c => c.Id === aiMatch.match.id);
+          if (customer) {
+            customerCache.set(cacheKey, customer);
+            logger.info('AI customer match found', { 
+              searchTerm: jobName,
+              matched: customer.DisplayName,
+              confidence: aiMatch.confidence,
+              method: aiMatch.method
+            });
+            return customer;
+          }
+        }
+      } catch (aiError) {
+        logger.warn('AI matching failed, falling back to simple match', { error: aiError.message });
+      }
+    }
+
+    // Fallback: Simple partial match
     if (!customer && customers.length > 0) {
       customer = customers.find(c =>
         c.DisplayName.toLowerCase().includes(jobName.toLowerCase()) ||
         jobName.toLowerCase().includes(c.DisplayName.toLowerCase())
       );
-    }
-
-    // If still no match, create new customer/job
-    if (!customer) {
-      logger.info('Creating new customer/job', { name: jobName });
       
-      const createResponse = await qboClient.makeApiCall('POST', '/customer', {
-        DisplayName: jobName,
-        CompanyName: jobName,
-        Job: true,
-        BillWithParent: false,
-        Active: true
-      });
-
-      customer = createResponse.Customer;
+      if (customer) {
+        customerCache.set(cacheKey, customer);
+        logger.info('Partial customer match found', { name: customer.DisplayName });
+        return customer;
+      }
     }
+
+    // No match found - create new customer/job
+    logger.info('Creating new customer/job', { name: jobName });
+    
+    const createResponse = await qboClient.makeApiCall('POST', '/customer', {
+      DisplayName: jobName,
+      CompanyName: jobName,
+      Job: true,
+      BillWithParent: false,
+      Active: true
+    });
+
+    customer = createResponse.Customer;
 
     // Cache the result
     customerCache.set(cacheKey, customer);
 
-    logger.info('Found/created customer', { 
+    logger.info('Created new customer', { 
       id: customer.Id, 
       name: customer.DisplayName 
     });

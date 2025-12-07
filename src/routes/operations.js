@@ -80,6 +80,36 @@ router.get('/api/status', async (req, res) => {
 });
 
 /**
+ * Send test SMS alerts
+ */
+router.post('/api/sms/:type', async (req, res) => {
+  const { type } = req.params;
+  const smsAlerts = require('../services/sms-alerts');
+  
+  try {
+    let result;
+    switch (type) {
+      case 'monday':
+        result = await smsAlerts.sendMondayScorecard();
+        break;
+      case 'friday':
+        result = await smsAlerts.sendFridayWins();
+        break;
+      case 'test':
+        result = await smsAlerts.sendAlert('Test Alert', 'This is a test message from RLT Operations Center');
+        break;
+      default:
+        return res.status(400).json({ error: 'Unknown SMS type. Use: monday, friday, or test' });
+    }
+    
+    res.json({ success: true, type, result });
+  } catch (error) {
+    logger.error('Failed to send SMS', { type, error: error.message });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * Manually trigger a bot run
  */
 router.post('/api/trigger/:botId', async (req, res) => {

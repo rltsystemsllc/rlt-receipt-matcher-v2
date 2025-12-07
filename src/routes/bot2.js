@@ -16,6 +16,14 @@ const config = require('../config');
 const bot2 = require('../bot2');
 const logger = require('../utils/logger');
 
+// Try to load AI service for status
+let aiService = null;
+try {
+  aiService = require('../bot2/ai');
+} catch (e) {
+  // AI service not available
+}
+
 /**
  * Dashboard styles
  */
@@ -220,6 +228,10 @@ router.get('/', async (req, res) => {
                 <span class="status-badge ${status.schedulerRunning ? 'status-ok' : 'status-warn'}">
                   ${status.schedulerRunning ? '● Running' : '○ Stopped'}
                 </span>
+              </div>
+              <div class="stat-row">
+                <span class="stat-label">OpenAI (Smart Descriptions)</span>
+                <span class="stat-value">${aiService?.isAvailable() ? '✅ Active' : '❌ Not Set'}</span>
               </div>
               <div class="stat-row">
                 <span class="stat-label">Pending Approvals</span>

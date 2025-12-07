@@ -186,7 +186,7 @@ async function checkNewProjectTimeout() {
       const ringcentral = require('../ringcentral');
       
       try {
-        await ringcentral.sendGroupText(
+        await ringcentral.sendNotification(
           `⏰ Reminder: New project request still pending!\n\n` +
           `Contractor: ${state.pendingNewProject.contractorName}\n` +
           `Project: ${state.pendingNewProject.projectName}\n\n` +
