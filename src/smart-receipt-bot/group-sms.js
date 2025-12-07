@@ -50,13 +50,36 @@ async function send(message) {
 
 /**
  * Send MMS with image to group
- * Note: Falls back to text if MMS fails
+ * Sends receipt image so Bobby/Jessica can see it and identify the job
  */
-async function sendWithImage(message, imageData) {
+async function sendWithImage(message, imageData, filename = 'receipt.jpg') {
   try {
-    // For now, send as text with note about attachment
-    // Full MMS support requires multipart form data handling
-    return await send(message + '\n\n📷 [Receipt image attached in email]');
+    const results = [];
+    
+    // Send MMS to each group member
+    for (const member of GROUP_MEMBERS) {
+      try {
+        if (imageData) {
+          await ringcentralService.sendMMS(member.phone, message, imageData, filename);
+        } else {
+          await ringcentralService.sendSMS(member.phone, message);
+        }
+        results.push({ name: member.name, success: true });
+        logger.info('MMS sent to group member', { to: member.name, hasImage: !!imageData });
+      } catch (error) {
+        // If MMS fails, try SMS without image
+        logger.warn('MMS failed, trying SMS', { to: member.name, error: error.message });
+        try {
+          await ringcentralService.sendSMS(member.phone, message + '\n\n📷 [Image could not be sent]');
+          results.push({ name: member.name, success: true, fallback: true });
+        } catch (smsError) {
+          results.push({ name: member.name, success: false, error: smsError.message });
+          logger.error('Failed to send to group member', { to: member.name, error: smsError.message });
+        }
+      }
+    }
+
+    return results.some(r => r.success);
 
   } catch (error) {
     logger.error('Failed to send group MMS', { error: error.message });

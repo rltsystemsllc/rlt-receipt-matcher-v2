@@ -140,6 +140,73 @@ async function sendSMS(to, message) {
 }
 
 /**
+ * Send MMS message with image attachment
+ * @param {string} to - Phone number to send to
+ * @param {string} message - Text message
+ * @param {Buffer|string} imageData - Image as Buffer or base64 string
+ * @param {string} filename - Filename for the attachment (default: receipt.jpg)
+ */
+async function sendMMS(to, message, imageData, filename = 'receipt.jpg') {
+  const plt = await initialize();
+  if (!plt) {
+    throw new Error('RingCentral not initialized');
+  }
+
+  try {
+    // Convert base64 to buffer if needed
+    let imageBuffer;
+    if (Buffer.isBuffer(imageData)) {
+      imageBuffer = imageData;
+    } else if (typeof imageData === 'string') {
+      // Remove data URL prefix if present
+      const base64Data = imageData.replace(/^data:image\/\w+;base64,/, '');
+      imageBuffer = Buffer.from(base64Data, 'base64');
+    } else {
+      throw new Error('Invalid image data format');
+    }
+
+    // Determine content type from filename
+    let contentType = 'image/jpeg';
+    if (filename.endsWith('.png')) {
+      contentType = 'image/png';
+    } else if (filename.endsWith('.pdf')) {
+      contentType = 'application/pdf';
+    }
+
+    // Create multipart form data for MMS
+    const FormData = require('form-data');
+    const form = new FormData();
+    
+    // Add JSON part with message details
+    form.append('json', JSON.stringify({
+      from: { phoneNumber: config.ringcentral.botPhone },
+      to: [{ phoneNumber: to }],
+      text: message
+    }), {
+      contentType: 'application/json'
+    });
+    
+    // Add image attachment
+    form.append('attachment', imageBuffer, {
+      filename: filename,
+      contentType: contentType
+    });
+
+    const response = await plt.post('/restapi/v1.0/account/~/extension/~/sms', form);
+    const data = await response.json();
+    
+    logger.info('MMS sent successfully', { to, messageId: data.id, hasAttachment: true });
+    return data;
+
+  } catch (error) {
+    logger.error('Failed to send MMS', { to, error: error.message });
+    // Fall back to SMS without image
+    logger.info('Falling back to SMS without image');
+    return await sendSMS(to, message + '\n\n📷 [Image could not be sent - check email for receipt]');
+  }
+}
+
+/**
  * Send notification to configured recipients
  */
 async function sendNotification(message) {
@@ -412,6 +479,7 @@ module.exports = {
   initialize,
   isAuthenticated,
   sendSMS,
+  sendMMS,
   sendToNumber,
   sendNotification,
   sendInvoiceApproval,
