@@ -56,23 +56,46 @@ router.get('/api/scorecard', async (req, res) => {
 async function getQBOData() {
   const companyId = qboClient.getCompanyId();
   
+  // Get date ranges for this week vs last week
+  const now = new Date();
+  const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+  const twoWeeksAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
+  const weekAgoStr = weekAgo.toISOString().split('T')[0];
+  const twoWeeksAgoStr = twoWeeksAgo.toISOString().split('T')[0];
+  
   // Fetch all data in parallel for speed
   const [
-    bankAccounts,
+    allBankAccounts,
     creditCardAccounts,
     openInvoices,
     openBills,
-    recentPayments
+    recentPayments,
+    allInvoices,
+    recentExpenses
   ] = await Promise.all([
     queryQBO(companyId, "SELECT * FROM Account WHERE AccountType = 'Bank' AND Active = true"),
     queryQBO(companyId, "SELECT * FROM Account WHERE AccountType = 'Credit Card' AND Active = true"),
     queryQBO(companyId, "SELECT * FROM Invoice WHERE Balance > '0'"),
     queryQBO(companyId, "SELECT * FROM Bill WHERE Balance > '0'"),
-    queryQBO(companyId, "SELECT * FROM Payment ORDER BY TxnDate DESC MAXRESULTS 20")
+    queryQBO(companyId, "SELECT * FROM Payment ORDER BY TxnDate DESC MAXRESULTS 50"),
+    queryQBO(companyId, `SELECT * FROM Invoice WHERE TxnDate >= '${twoWeeksAgoStr}'`),
+    queryQBO(companyId, `SELECT * FROM Purchase WHERE TxnDate >= '${twoWeeksAgoStr}'`)
   ]);
   
+  // Filter bank accounts - only include Checking and Savings (exclude lines of credit)
+  // Lines of credit often show as negative balances
+  const bankAccounts = (allBankAccounts || []).filter(a => {
+    const subType = (a.AccountSubType || '').toLowerCase();
+    // Include checking, savings, money market; exclude lines of credit
+    return subType.includes('checking') || 
+           subType.includes('savings') || 
+           subType.includes('money') ||
+           // If no subtype, include if balance is positive (likely real cash)
+           (!subType && (parseFloat(a.CurrentBalance) || 0) >= 0);
+  });
+  
   // Calculate cash position
-  const bankBalance = (bankAccounts || []).reduce((sum, a) => sum + (parseFloat(a.CurrentBalance) || 0), 0);
+  const bankBalance = bankAccounts.reduce((sum, a) => sum + (parseFloat(a.CurrentBalance) || 0), 0);
   const arTotal = (openInvoices || []).reduce((sum, i) => sum + (parseFloat(i.Balance) || 0), 0);
   const apTotal = (openBills || []).reduce((sum, b) => sum + (parseFloat(b.Balance) || 0), 0);
   
@@ -89,14 +112,22 @@ async function getQBOData() {
   // Calculate Keith's metrics
   const keithMetrics = calculateKeithMetrics(arAging, recentPayments || [], openInvoices || []);
   
-  // Calculate Tony's momentum
-  const tonyMetrics = calculateTonyMetrics(openInvoices || [], recentPayments || []);
+  // Calculate Tony's momentum with invoices and expenses
+  const tonyMetrics = calculateTonyMetrics(allInvoices || [], recentPayments || [], recentExpenses || []);
   
   // Generate cash forecast
   const cashForecast = generateCashForecast(bankBalance, arAging, apTotal);
   
   // Generate alerts
   const alerts = generateAlerts(arAging, bankBalance);
+  
+  // Log what accounts we're including
+  logger.info('Bank accounts summary', {
+    total: (allBankAccounts || []).length,
+    filtered: bankAccounts.length,
+    balance: bankBalance,
+    accounts: bankAccounts.map(a => ({ name: a.Name, subType: a.AccountSubType, balance: a.CurrentBalance }))
+  });
   
   return {
     cashPosition: {
@@ -207,34 +238,68 @@ function calculateKeithMetrics(arAging, payments, invoices) {
 /**
  * Calculate Tony Robbins' Momentum Metrics
  */
-function calculateTonyMetrics(invoices, payments) {
+function calculateTonyMetrics(invoices, payments, expenses) {
   const now = new Date();
   const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
   
-  // This week's revenue
+  // This week's invoices (revenue billed)
   const thisWeekInvoices = (invoices || []).filter(i => 
-    new Date(i.MetaData?.CreateTime || i.TxnDate) >= weekAgo
+    new Date(i.TxnDate || i.MetaData?.CreateTime) >= weekAgo
   );
   const thisWeekRevenue = thisWeekInvoices.reduce((sum, i) => sum + (parseFloat(i.TotalAmt) || 0), 0);
   
-  // Last week's revenue
+  // Last week's invoices
   const lastWeekInvoices = (invoices || []).filter(i => {
-    const date = new Date(i.MetaData?.CreateTime || i.TxnDate);
+    const date = new Date(i.TxnDate || i.MetaData?.CreateTime);
     return date >= twoWeeksAgo && date < weekAgo;
   });
   const lastWeekRevenue = lastWeekInvoices.reduce((sum, i) => sum + (parseFloat(i.TotalAmt) || 0), 0);
   
-  // Revenue change
+  // This week's payments collected
+  const thisWeekPayments = (payments || []).filter(p => 
+    new Date(p.TxnDate) >= weekAgo
+  );
+  const thisWeekCollected = thisWeekPayments.reduce((sum, p) => sum + (parseFloat(p.TotalAmt) || 0), 0);
+  
+  // Last week's payments
+  const lastWeekPayments = (payments || []).filter(p => {
+    const date = new Date(p.TxnDate);
+    return date >= twoWeeksAgo && date < weekAgo;
+  });
+  const lastWeekCollected = lastWeekPayments.reduce((sum, p) => sum + (parseFloat(p.TotalAmt) || 0), 0);
+  
+  // This week's expenses
+  const thisWeekExpenses = (expenses || []).filter(e => 
+    new Date(e.TxnDate) >= weekAgo
+  );
+  const thisWeekExpenseTotal = thisWeekExpenses.reduce((sum, e) => sum + (parseFloat(e.TotalAmt) || 0), 0);
+  
+  // Last week's expenses
+  const lastWeekExpenses = (expenses || []).filter(e => {
+    const date = new Date(e.TxnDate);
+    return date >= twoWeeksAgo && date < weekAgo;
+  });
+  const lastWeekExpenseTotal = lastWeekExpenses.reduce((sum, e) => sum + (parseFloat(e.TotalAmt) || 0), 0);
+  
+  // Calculate changes
   const revenueChange = lastWeekRevenue > 0 
     ? ((thisWeekRevenue - lastWeekRevenue) / lastWeekRevenue * 100) 
     : (thisWeekRevenue > 0 ? 100 : 0);
   
-  // Momentum score
+  const collectedChange = lastWeekCollected > 0
+    ? ((thisWeekCollected - lastWeekCollected) / lastWeekCollected * 100)
+    : (thisWeekCollected > 0 ? 100 : 0);
+    
+  const expenseChange = lastWeekExpenseTotal > 0
+    ? ((thisWeekExpenseTotal - lastWeekExpenseTotal) / lastWeekExpenseTotal * 100)
+    : 0;
+  
+  // Momentum score based on revenue and collections
   let momentumScore = 50;
-  if (revenueChange > 20) momentumScore = 90;
-  else if (revenueChange > 10) momentumScore = 80;
-  else if (revenueChange > 0) momentumScore = 70;
+  if (revenueChange > 20 || collectedChange > 20) momentumScore = 90;
+  else if (revenueChange > 10 || collectedChange > 10) momentumScore = 80;
+  else if (revenueChange > 0 || collectedChange > 0) momentumScore = 70;
   else if (revenueChange > -10) momentumScore = 50;
   else momentumScore = 30;
   
@@ -242,12 +307,26 @@ function calculateTonyMetrics(invoices, payments) {
   const wins = [];
   if (thisWeekInvoices.length > 0) wins.push(`${thisWeekInvoices.length} invoice${thisWeekInvoices.length > 1 ? 's' : ''} sent`);
   if (thisWeekRevenue > 0) wins.push(`$${thisWeekRevenue.toLocaleString()} billed`);
-  if ((payments || []).length > 0) wins.push(`${payments.length} payments received`);
+  if (thisWeekCollected > 0) wins.push(`$${thisWeekCollected.toLocaleString()} collected`);
+  if (thisWeekPayments.length > 0) wins.push(`${thisWeekPayments.length} payment${thisWeekPayments.length > 1 ? 's' : ''} received`);
   
   return {
-    thisWeek: { revenue: thisWeekRevenue, invoiceCount: thisWeekInvoices.length, jobsCompleted: thisWeekInvoices.length },
-    lastWeek: { revenue: lastWeekRevenue, invoiceCount: lastWeekInvoices.length },
+    thisWeek: { 
+      revenue: thisWeekRevenue, 
+      collected: thisWeekCollected,
+      expenses: thisWeekExpenseTotal,
+      invoiceCount: thisWeekInvoices.length, 
+      jobsCompleted: thisWeekInvoices.length 
+    },
+    lastWeek: { 
+      revenue: lastWeekRevenue, 
+      collected: lastWeekCollected,
+      expenses: lastWeekExpenseTotal,
+      invoiceCount: lastWeekInvoices.length 
+    },
     revenueChange: Math.round(revenueChange * 10) / 10,
+    collectedChange: Math.round(collectedChange * 10) / 10,
+    expenseChange: Math.round(expenseChange * 10) / 10,
     momentumScore,
     momentumLabel: momentumScore >= 70 ? 'STRONG 💪' : momentumScore >= 50 ? 'STEADY' : 'NEEDS ATTENTION ⚠️',
     wins: wins.length > 0 ? wins : ['Keep pushing!']
