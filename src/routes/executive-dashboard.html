@@ -650,7 +650,11 @@
     function updateDashboard(data) {
       // Cash Position
       if (data.cashPosition) {
-        document.getElementById('net-cash').textContent = formatCurrency(data.cashPosition.netCash);
+        const netCashEl = document.getElementById('net-cash');
+        netCashEl.textContent = formatCurrency(data.cashPosition.netCash);
+        netCashEl.className = data.cashPosition.netCash >= 0 ? 'cash-amount positive' : 'cash-amount';
+        if (data.cashPosition.netCash < 0) netCashEl.style.color = 'var(--red)';
+        
         document.getElementById('bank-balance').textContent = formatCurrency(data.cashPosition.bankBalance);
         document.getElementById('ar-total').textContent = '+' + formatCurrency(data.cashPosition.arTotal);
         document.getElementById('ap-total').textContent = '-' + formatCurrency(data.cashPosition.apTotal);
@@ -661,20 +665,142 @@
         updateCreditCards(data.creditCards);
       }
 
+      // Keith's Metrics
+      if (data.keithMetrics) {
+        updateKeithMetrics(data.keithMetrics);
+      }
+
+      // Wins
+      if (data.tonyMetrics?.wins) {
+        updateWins(data.tonyMetrics.wins);
+      }
+
+      // Momentum
+      if (data.tonyMetrics) {
+        updateMomentum(data.tonyMetrics);
+      }
+
+      // Alerts
+      if (data.alerts) {
+        updateAlerts(data.alerts);
+      }
+
+      // Week Stats
+      if (data.tonyMetrics) {
+        updateWeekStats(data.tonyMetrics);
+      }
+
       // Forecast
       if (data.cashForecast) {
-        const container = document.getElementById('forecast-chart');
-        const maxValue = Math.max(...data.cashForecast.map(f => f.projected));
-        container.innerHTML = data.cashForecast.map(f => {
-          const height = Math.max(20, (f.projected / maxValue) * 160);
-          return `
-            <div class="forecast-bar-container">
-              <div class="forecast-bar ${f.status}" style="height: ${height}px"></div>
-              <div class="forecast-week">W${f.week}</div>
-            </div>
-          `;
-        }).join('');
+        updateForecast(data.cashForecast);
       }
+    }
+
+    function updateKeithMetrics(metrics) {
+      const container = document.getElementById('keith-metrics');
+      container.innerHTML = `
+        <div class="metric-item">
+          <div class="metric-value ${metrics.grossMargin.status}">${metrics.grossMargin.value}%</div>
+          <div class="metric-label">Gross Margin</div>
+          <div class="metric-target"><span class="metric-status ${metrics.grossMargin.status}"></span>Target: 40%+</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-value ${metrics.daysToInvoice.status}">${metrics.daysToInvoice.value}</div>
+          <div class="metric-label">Days to Invoice</div>
+          <div class="metric-target"><span class="metric-status ${metrics.daysToInvoice.status}"></span>Target: &lt;3</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-value ${metrics.daysToCollect.status}">${metrics.daysToCollect.value}</div>
+          <div class="metric-label">Days to Collect</div>
+          <div class="metric-target"><span class="metric-status ${metrics.daysToCollect.status}"></span>Target: &lt;14</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-value ${metrics.billableUtil.status}">${metrics.billableUtil.value}%</div>
+          <div class="metric-label">Billable Util</div>
+          <div class="metric-target"><span class="metric-status ${metrics.billableUtil.status}"></span>Target: 75%+</div>
+        </div>
+        <div class="metric-item">
+          <div class="metric-value ${metrics.cashRunway.status}">${metrics.cashRunway.value}</div>
+          <div class="metric-label">Cash Runway</div>
+          <div class="metric-target"><span class="metric-status ${metrics.cashRunway.status}"></span>Target: 6+ wks</div>
+        </div>
+      `;
+    }
+
+    function updateWins(wins) {
+      const container = document.getElementById('wins-list');
+      if (wins.length === 0) {
+        container.innerHTML = '<div class="win-item"><div class="win-icon">💪</div><div><div class="win-text">Keep pushing!</div></div></div>';
+        return;
+      }
+      container.innerHTML = wins.map(win => `
+        <div class="win-item">
+          <div class="win-icon">✓</div>
+          <div><div class="win-text">${win}</div></div>
+        </div>
+      `).join('');
+    }
+
+    function updateMomentum(tony) {
+      const score = tony.momentumScore || 50;
+      document.getElementById('momentum-value').textContent = score;
+      document.getElementById('momentum-status').textContent = tony.momentumLabel || 'STEADY';
+      
+      const circle = document.querySelector('.momentum-circle');
+      circle.style.setProperty('--momentum', score);
+      
+      const valueEl = document.getElementById('momentum-value');
+      const statusEl = document.getElementById('momentum-status');
+      const color = score >= 70 ? 'var(--green)' : score >= 50 ? 'var(--yellow)' : 'var(--red)';
+      valueEl.style.color = color;
+      statusEl.style.color = color;
+    }
+
+    function updateAlerts(alerts) {
+      const container = document.getElementById('alerts-list');
+      if (!alerts || alerts.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--green); padding: 20px;">✓ No urgent items</div>';
+        return;
+      }
+      container.innerHTML = alerts.map(alert => `
+        <div class="alert-item ${alert.type}">
+          <div class="alert-icon">${alert.type === 'danger' ? '!' : '⏰'}</div>
+          <div class="alert-content">
+            <div class="alert-title">${alert.title}</div>
+            <div class="alert-description">${alert.description}</div>
+          </div>
+          <button class="alert-action">${alert.action}</button>
+        </div>
+      `).join('');
+    }
+
+    function updateWeekStats(tony) {
+      const thisWeek = tony.thisWeek || {};
+      const lastWeek = tony.lastWeek || {};
+      const change = tony.revenueChange || 0;
+      const changeClass = change >= 0 ? 'up' : 'down';
+      const arrow = change >= 0 ? '↑' : '↓';
+      
+      document.querySelector('.week-stats .stat-row:nth-child(1) .stat-value').textContent = formatCurrency(thisWeek.revenue);
+      document.querySelector('.week-stats .stat-row:nth-child(1) .stat-change').textContent = `${arrow} ${Math.abs(change).toFixed(0)}%`;
+      document.querySelector('.week-stats .stat-row:nth-child(1) .stat-change').className = `stat-change ${changeClass}`;
+      
+      document.querySelector('.week-stats .stat-row:nth-child(4) .stat-value').textContent = thisWeek.jobsCompleted || 0;
+    }
+
+    function updateForecast(forecast) {
+      const container = document.getElementById('forecast-chart');
+      const maxAbs = Math.max(...forecast.map(f => Math.abs(f.projected)));
+      
+      container.innerHTML = forecast.map(f => {
+        const height = Math.max(20, (Math.abs(f.projected) / maxAbs) * 160);
+        return `
+          <div class="forecast-bar-container">
+            <div class="forecast-bar ${f.status}" style="height: ${height}px" title="${formatCurrency(f.projected)}"></div>
+            <div class="forecast-week">W${f.week}</div>
+          </div>
+        `;
+      }).join('');
     }
 
     function updateCreditCards(cards) {
