@@ -26,18 +26,22 @@ const EXCLUDED_VENDORS = [
   /gusto/i,
   /paychex/i,
   
-  // Payroll Taxes
+  // Payroll Taxes & Deductions
   /payroll tax/i,
   /eftps/i,
   /state tax/i,
   /federal tax/i,
   /irs/i,
   /dept.*revenue/i,
+  /child support/i,
+  /hawaii child support/i,
   
   // Credit Card Payments (paying off cards)
   /american express.*payment/i,
   /amex.*payment/i,
+  /amex epayment/i,
   /bank of hawaii.*payment/i,
+  /boh.*payment/i,
   /credit card payment/i,
   /card payment/i,
   /chase.*payment/i,
@@ -89,6 +93,7 @@ const EXCLUDED_VENDORS = [
   // Utilities (recurring, often auto-pay)
   /hawaiian electric/i,
   /heco/i,
+  /maui electric/i,
   /spectrum/i,
   /hawaiian tel/i,
   /water.*bill/i,
@@ -100,7 +105,42 @@ const EXCLUDED_VENDORS = [
   // QuickBooks/Intuit fees
   /intuit/i,
   /quickbooks/i,
-  /qb online/i
+  /qb online/i,
+  
+  // Gas Stations (small purchases, hard to track by job)
+  /minit stop/i,
+  /safeway fuel/i,
+  /hele/i,
+  /sunoco/i,
+  /shell/i,
+  /chevron/i,
+  /76\s/i,
+  /texaco/i,
+  /costco gas/i,
+  
+  // Government Payments
+  /maui county/i,
+  /hawaii state tax/i,
+  /tax collector/i,
+  /county of maui/i,
+  /state of hawaii/i
+];
+
+/**
+ * Vendors that ALWAYS need receipts (never exclude)
+ * Even if they match an exclusion pattern above
+ */
+const ALWAYS_REQUIRE_RECEIPT = [
+  /read lighting/i,
+  /rlt/i,
+  /ced\b/i,
+  /consolidated electrical/i,
+  /home depot/i,
+  /lowe'?s/i,
+  /hpm/i,
+  /haiku hardware/i,
+  /haiku true value/i,
+  /ace hardware/i
 ];
 
 /**
@@ -110,6 +150,14 @@ function shouldExcludeTransaction(purchase) {
   const vendor = purchase.EntityRef?.name || '';
   const memo = purchase.PrivateNote || '';
   const accountName = purchase.AccountRef?.name || '';
+  
+  // First check if vendor ALWAYS needs receipt (electrical suppliers, etc.)
+  for (const pattern of ALWAYS_REQUIRE_RECEIPT) {
+    if (pattern.test(vendor) || pattern.test(memo)) {
+      logger.info('Vendor always requires receipt', { vendor });
+      return false; // Don't exclude - always ask for receipt
+    }
+  }
   
   // Check vendor name against exclusion patterns
   for (const pattern of EXCLUDED_VENDORS) {
