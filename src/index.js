@@ -31,6 +31,7 @@ const bot2 = require('./bot2');
 const ringcentral = require('./bot2/ringcentral');
 const dataQABot = require('./services/data-qa-bot');
 const groupSMS = require('./smart-receipt-bot/group-sms');
+const smartReceiptBot = require('./smart-receipt-bot');
 
 // Routes
 const indexRoutes = require('./routes/index');
@@ -151,8 +152,38 @@ async function start() {
   // Start SMS Alerts scheduler (Monday scorecard, Friday wins)
   smsAlerts.start();
   
+  // Start Smart Receipt Bot and scheduler
+  startSmartReceiptBot();
+  
   // Start SMS polling for Q&A Bot (backup for webhook)
   setupSMSPolling();
+}
+
+/**
+ * Start the Smart Receipt Bot with periodic transaction checking
+ */
+function startSmartReceiptBot() {
+  try {
+    // Initialize the bot
+    smartReceiptBot.start();
+    
+    // Check for uncategorized transactions every 15 minutes
+    const FIFTEEN_MINUTES = 15 * 60 * 1000;
+    
+    setInterval(async () => {
+      try {
+        logger.info('🧾 Smart Receipt Bot: Checking for uncategorized transactions...');
+        await smartReceiptBot.checkForNewTransactions();
+      } catch (error) {
+        logger.error('Smart Receipt Bot check failed', { error: error.message });
+      }
+    }, FIFTEEN_MINUTES);
+    
+    logger.info('🧾 Smart Receipt Bot started - checking QBO every 15 minutes');
+    
+  } catch (error) {
+    logger.error('Failed to start Smart Receipt Bot', { error: error.message });
+  }
 }
 
 /**
