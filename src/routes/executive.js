@@ -83,15 +83,30 @@ async function getQBOData() {
   ]);
   
   // Filter bank accounts - only include Checking and Savings (exclude lines of credit)
-  // Lines of credit often show as negative balances
   const bankAccounts = (allBankAccounts || []).filter(a => {
+    const name = (a.Name || '').toLowerCase();
     const subType = (a.AccountSubType || '').toLowerCase();
-    // Include checking, savings, money market; exclude lines of credit
-    return subType.includes('checking') || 
-           subType.includes('savings') || 
-           subType.includes('money') ||
-           // If no subtype, include if balance is positive (likely real cash)
-           (!subType && (parseFloat(a.CurrentBalance) || 0) >= 0);
+    
+    // Explicitly exclude lines of credit
+    if (name.includes('line of credit') || name.includes('loc') || 
+        subType.includes('lineofcredit') || subType.includes('line')) {
+      logger.info('Excluding account from bank balance', { name: a.Name, subType: a.AccountSubType, balance: a.CurrentBalance });
+      return false;
+    }
+    
+    // Include checking, savings, money market
+    const isRealCash = subType.includes('checking') || 
+                       subType.includes('savings') || 
+                       subType.includes('money');
+    
+    // If balance is very negative (< -$10k), likely a credit line - exclude
+    const balance = parseFloat(a.CurrentBalance) || 0;
+    if (balance < -10000) {
+      logger.info('Excluding large negative balance account', { name: a.Name, balance });
+      return false;
+    }
+    
+    return isRealCash || balance >= 0;
   });
   
   // Calculate cash position
