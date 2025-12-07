@@ -17,6 +17,7 @@ const logger = require('../utils/logger');
  * Principles from their published books/seminars - NOT made-up advice
  */
 const MENTOR_GUIDANCE = {
+  // Keith Cunningham - Multiple books
   keith: {
     name: 'Keith Cunningham',
     source: 'The Road Less Stupid',
@@ -29,6 +30,29 @@ const MENTOR_GUIDANCE = {
       ar: "AR over 60 days is a collection problem. AR over 90 days is a write-off waiting to happen."
     }
   },
+  keithBlueprint: {
+    name: 'Keith Cunningham',
+    source: 'The Ultimate Blueprint for an Insanely Successful Business',
+    principles: {
+      cashFlow: "The business exists to generate cash. Period.",
+      margins: "Gross margin is the lifeblood of your business. Protect it fiercely.",
+      metrics: "The 5 numbers you must know: gross margin, days to invoice, days to collect, billable utilization, and cash runway.",
+      runway: "Cash runway tells you how long you can survive. Know it weekly.",
+      collections: "Speed to invoice = speed to cash. Bill fast, collect faster."
+    }
+  },
+  keithVault: {
+    name: 'Keith Cunningham',
+    source: 'Keys to the Vault',
+    principles: {
+      cashFlow: "Cash flow is not the same as profit. Many profitable businesses go broke.",
+      margins: "Your margin is your moat. Don't compete on price, compete on value.",
+      metrics: "What you don't measure, you can't manage. What you don't manage, you lose.",
+      collections: "The sale isn't complete until the cash is in the bank.",
+      runway: "The vault is only open to those who understand their numbers."
+    }
+  },
+  // Tony Robbins
   tony: {
     name: 'Tony Robbins',
     source: 'Money: Master the Game',
@@ -40,6 +64,7 @@ const MENTOR_GUIDANCE = {
       weekly: "Review your numbers weekly. You can't improve what you don't measure."
     }
   },
+  // Donald Miller
   donald: {
     name: 'Donald Miller',
     source: 'Business Made Simple',
@@ -50,45 +75,298 @@ const MENTOR_GUIDANCE = {
       priorities: "Do the most important thing first. In business, that's usually collections.",
       systems: "You don't rise to the level of your goals, you fall to the level of your systems."
     }
+  },
+  // Mike Michalowicz - Profit First
+  mike: {
+    name: 'Mike Michalowicz',
+    source: 'Profit First',
+    principles: {
+      cashFlow: "Pay yourself first. Profit is not an event at year-end, it's a habit built into every transaction.",
+      margins: "Revenue is not the goal. Profit is. A smaller, profitable business beats a large, unprofitable one.",
+      runway: "Keep your profit account sacred. It's your runway, your safety net, your freedom.",
+      metrics: "Use small plates. Limit what's available for expenses, and you'll find a way to operate within those limits.",
+      collections: "Cash in the bank is truth. Accounts receivable is just a promise."
+    }
+  },
+  // David Jenyns - SYSTEMology
+  david: {
+    name: 'David Jenyns',
+    source: 'SYSTEMology',
+    principles: {
+      systems: "The goal is to build systems so the business runs without you, not because of you.",
+      clarity: "Document your critical client flow first. Everything else follows.",
+      metrics: "If it's not documented, it doesn't exist. Systems create consistency.",
+      growth: "You can't scale chaos. Systematize before you scale.",
+      action: "Start with your biggest bottleneck. One system at a time."
+    }
+  },
+  // Tim Ferriss - 4-Hour Workweek
+  tim: {
+    name: 'Tim Ferriss',
+    source: 'The 4-Hour Workweek',
+    principles: {
+      systems: "Automate before you delegate. Eliminate before you automate.",
+      metrics: "Focus on the 20% that produces 80% of results. Ignore the rest.",
+      clarity: "Being busy is a form of laziness. Focus on being effective, not efficient.",
+      growth: "The goal is not to work less, it's to produce more with less.",
+      action: "What would this look like if it were easy? Ask that first."
+    }
+  },
+  // Michael Gerber - E-Myth Revisited
+  michael: {
+    name: 'Michael Gerber',
+    source: 'The E-Myth Revisited',
+    principles: {
+      systems: "Work ON your business, not IN it. That's the only way to scale.",
+      clarity: "Your business is not your life. Build it so it can run without you.",
+      growth: "The technician, the manager, and the entrepreneur must all work in harmony.",
+      metrics: "Document every process. If your best employee left tomorrow, could someone step in?",
+      action: "The franchise prototype: build your business as if you were going to franchise it."
+    }
+  },
+  // Dan Sullivan - Who Not How
+  dan: {
+    name: 'Dan Sullivan',
+    source: 'Who Not How',
+    principles: {
+      systems: "Stop asking 'How do I do this?' Start asking 'Who can do this for me?'",
+      growth: "Your job is vision, not execution. Find the Whos for the Hows.",
+      action: "Procrastination disappears when you find the right Who.",
+      clarity: "Time is your most valuable resource. Invest it in your Unique Ability.",
+      metrics: "The cost of a Who is always less than the cost of figuring out How yourself."
+    }
+  },
+  // Dan Sullivan - 10x Is Easier Than 2x
+  dan10x: {
+    name: 'Dan Sullivan',
+    source: '10x Is Easier Than 2x',
+    principles: {
+      growth: "10x thinking forces you to rethink everything. 2x keeps you doing more of the same.",
+      clarity: "To go 10x, you must let go of 80% of what you're doing now.",
+      action: "10x is about quality, not quantity. Fewer clients, higher value.",
+      metrics: "Your 10x future requires a completely different version of you.",
+      systems: "Every 10x jump requires letting go of what got you here."
+    }
+  },
+  // Dan Sullivan - The Gap and The Gain
+  danGap: {
+    name: 'Dan Sullivan',
+    source: 'The Gap and The Gain',
+    principles: {
+      wins: "Measure backward from where you started, not forward to an ideal. That's the GAIN.",
+      momentum: "The GAP is comparing yourself to an ideal. The GAIN is measuring your progress.",
+      growth: "High achievers often live in the GAP. Happiness comes from measuring the GAIN.",
+      metrics: "Every day, write down 3 wins. Train your brain to see progress.",
+      clarity: "The ideal is a moving target. Your gains are real and permanent."
+    }
+  },
+  // Gino Wickman - Traction
+  gino: {
+    name: 'Gino Wickman',
+    source: 'Traction',
+    principles: {
+      systems: "Run your business on EOS: Vision, People, Data, Issues, Process, Traction.",
+      metrics: "Everyone must have a number. A Scorecard tells you if you're winning.",
+      clarity: "Identify your core focus: what you're best at and passionate about.",
+      action: "Rocks are your 90-day priorities. Focus on 3-7 max. Execute relentlessly.",
+      collections: "IDS: Identify, Discuss, Solve. That's how you handle every issue."
+    }
+  },
+  // John Warrillow - Built to Sell
+  john: {
+    name: 'John Warrillow',
+    source: 'Built to Sell',
+    principles: {
+      systems: "A business that can't run without you isn't sellable. Systematize everything.",
+      clarity: "Specialize in one thing. Generalists get commoditized.",
+      growth: "Recurring revenue is king. It makes your business predictable and valuable.",
+      metrics: "The value of your business = profit × multiple. Systems increase your multiple.",
+      action: "Fire yourself from operations. If you're the bottleneck, you're the problem."
+    }
+  },
+  // Jim Collins - Good to Great
+  jim: {
+    name: 'Jim Collins',
+    source: 'Good to Great',
+    principles: {
+      clarity: "First who, then what. Get the right people on the bus first.",
+      metrics: "The Hedgehog Concept: What are you best at? What drives your economic engine? What are you passionate about?",
+      growth: "Great companies are built by Level 5 leaders: humble but fiercely determined.",
+      systems: "The Flywheel: Small consistent pushes create unstoppable momentum.",
+      action: "Confront the brutal facts, but never lose faith you'll prevail."
+    }
+  },
+  // Ray Dalio - Principles
+  ray: {
+    name: 'Ray Dalio',
+    source: 'Principles',
+    principles: {
+      systems: "Systemize your decision-making. Principles are your operating system.",
+      clarity: "Radical transparency: The best ideas win, regardless of who has them.",
+      metrics: "Pain + Reflection = Progress. Every mistake is a learning opportunity.",
+      growth: "Embrace reality and deal with it. Wishing things were different is a waste.",
+      action: "Believability-weighted decision making: Listen more to people with track records."
+    }
+  },
+  // James Clear - Atomic Habits
+  james: {
+    name: 'James Clear',
+    source: 'Atomic Habits',
+    principles: {
+      systems: "You don't rise to the level of your goals. You fall to the level of your systems.",
+      action: "1% better every day. Small habits compound into remarkable results.",
+      clarity: "Make it obvious, attractive, easy, and satisfying. That's the habit loop.",
+      growth: "Every action is a vote for the person you want to become.",
+      metrics: "Never miss twice. One miss is an accident. Two is the start of a new habit."
+    }
+  },
+  // Simon Sinek - Start with Why
+  simon: {
+    name: 'Simon Sinek',
+    source: 'Start with Why',
+    principles: {
+      clarity: "People don't buy what you do, they buy why you do it.",
+      growth: "Start with WHY, then HOW, then WHAT. Most businesses do it backwards.",
+      action: "The Golden Circle: Why is your purpose. How is your process. What is your product.",
+      systems: "Those who know their WHY attract those who believe what they believe.",
+      metrics: "Your WHY should never change. Your HOW and WHAT evolve over time."
+    }
+  },
+  // Mike Michalowicz - Clockwork
+  mikeClockwork: {
+    name: 'Mike Michalowicz',
+    source: 'Clockwork',
+    principles: {
+      systems: "Design your business to run itself. You should be replaceable.",
+      clarity: "The 4-week vacation test: Can your business run 4 weeks without you?",
+      action: "Identify your Queen Bee Role (QBR). Protect it at all costs.",
+      growth: "Capture, then transfer. Document what's in your head, then delegate it.",
+      metrics: "Track your 4 Ds: Doing, Deciding, Delegating, Designing. Move to Designing."
+    }
+  },
+  // Mike Michalowicz - Fix This Next
+  mikeFix: {
+    name: 'Mike Michalowicz',
+    source: 'Fix This Next',
+    principles: {
+      clarity: "The Business Hierarchy of Needs: Sales → Profit → Order → Impact → Legacy.",
+      metrics: "You can't fix everything at once. Find your Vital Need and fix that first.",
+      systems: "Sales is oxygen. Without it, nothing else matters. Fix sales first.",
+      action: "Every problem is a symptom. Find the root cause in the hierarchy.",
+      growth: "A business plateaus when you try to fix the wrong level of the hierarchy."
+    }
+  },
+  // Mike Michalowicz - The Pumpkin Plan
+  mikePumpkin: {
+    name: 'Mike Michalowicz',
+    source: 'The Pumpkin Plan',
+    principles: {
+      clarity: "Identify your best clients. Fire the rest. Nurture your giants.",
+      growth: "To grow a giant pumpkin, you remove all the small ones and focus on one.",
+      metrics: "Your top 20% of clients generate 80% of your profit. Know who they are.",
+      action: "Create a Wish List of your dream clients. Then go get them.",
+      margins: "Raise prices, fire bad clients. Better margins beat more revenue."
+    }
+  },
+  // Donald Miller - Building a StoryBrand
+  donaldStory: {
+    name: 'Donald Miller',
+    source: 'Building a StoryBrand',
+    principles: {
+      clarity: "Your customer is the hero, not you. You are the guide.",
+      action: "The StoryBrand framework: Character, Problem, Guide, Plan, Call to Action, Success, Failure.",
+      growth: "If you confuse, you lose. Clarity wins.",
+      systems: "Every message should answer: What do you offer? How will it make my life better? What do I do to buy it?",
+      metrics: "People don't buy the best products. They buy the products they can understand fastest."
+    }
+  },
+  // Donald Miller - Marketing Made Simple
+  donaldMarketing: {
+    name: 'Donald Miller',
+    source: 'Marketing Made Simple',
+    principles: {
+      systems: "The Marketing Made Simple checklist: One-liner, Website, Lead Generator, Email Sequence, Sales Sequence.",
+      clarity: "Your one-liner: Problem, Solution, Result. That's it.",
+      action: "A lead generator trades value for email addresses. Give value first.",
+      growth: "Nurture leads through email. Most sales happen after 7+ touches.",
+      metrics: "Your website should pass the grunt test: What do you offer? How does it help me? How do I buy?"
+    }
+  },
+  // Michael Gerber - E-Myth Mastery
+  michaelMastery: {
+    name: 'Michael Gerber',
+    source: 'E-Myth Mastery',
+    principles: {
+      systems: "Seven centers of management: Leadership, Marketing, Finance, Management, Lead Conversion, Lead Generation, Client Fulfillment.",
+      clarity: "Your Primary Aim: What do you want your life to look like?",
+      growth: "Your Strategic Objective: What does your business need to look like to achieve your Primary Aim?",
+      action: "Innovation, Quantification, Orchestration: Improve it, measure it, systematize it.",
+      metrics: "Create your Organization Chart now, even if it's just you. Then fill the roles with systems."
+    }
   }
 };
 
 /**
  * Question patterns and their handlers
+ * Each response includes guidance from a relevant mentor
  */
 const QUESTION_PATTERNS = [
   // Cash & Bank
-  { patterns: [/cash|bank|balance/i], handler: 'getCashPosition', mentor: 'keith', principle: 'cashFlow' },
+  { patterns: [/cash|bank|balance/i], handler: 'getCashPosition', mentor: 'mike', principle: 'cashFlow' },
   { patterns: [/how much.*(have|got)|money/i], handler: 'getCashPosition', mentor: 'keith', principle: 'cashFlow' },
   
   // AR / Who owes
   { patterns: [/ar|receivable|owed|owes|who owes/i], handler: 'getARDetails', mentor: 'keith', principle: 'ar' },
-  { patterns: [/overdue|late|past due/i], handler: 'getOverdueInvoices', mentor: 'keith', principle: 'collections' },
+  { patterns: [/overdue|late|past due/i], handler: 'getOverdueInvoices', mentor: 'keithVault', principle: 'collections' },
   
   // Revenue / Invoices
   { patterns: [/revenue|billed|invoiced/i], handler: 'getRevenueThisWeek', mentor: 'tony', principle: 'momentum' },
-  { patterns: [/this week|last week/i], handler: 'getWeekComparison', mentor: 'tony', principle: 'weekly' },
+  { patterns: [/this week|last week/i], handler: 'getWeekComparison', mentor: 'danGap', principle: 'wins' },
   
   // Collections / Payments
-  { patterns: [/collected|payments|paid/i], handler: 'getCollections', mentor: 'keith', principle: 'collections' },
+  { patterns: [/collected|payments|paid/i], handler: 'getCollections', mentor: 'keithBlueprint', principle: 'collections' },
   
   // Margins / Profit
-  { patterns: [/margin|profit|gross/i], handler: 'getGrossMargin', mentor: 'keith', principle: 'margins' },
+  { patterns: [/margin|profit|gross/i], handler: 'getGrossMargin', mentor: 'mike', principle: 'margins' },
   
   // Expenses
-  { patterns: [/expense|spent|spending/i], handler: 'getExpenses', mentor: 'donald', principle: 'cashFlow' },
+  { patterns: [/expense|spent|spending/i], handler: 'getExpenses', mentor: 'mike', principle: 'runway' },
   
   // Runway
-  { patterns: [/runway|survive|weeks/i], handler: 'getCashRunway', mentor: 'keith', principle: 'runway' },
+  { patterns: [/runway|survive|weeks/i], handler: 'getCashRunway', mentor: 'keithBlueprint', principle: 'runway' },
   
-  // Wins
-  { patterns: [/wins|winning|celebrate/i], handler: 'getWins', mentor: 'tony', principle: 'wins' },
+  // Wins / Progress
+  { patterns: [/wins|winning|celebrate|progress/i], handler: 'getWins', mentor: 'danGap', principle: 'wins' },
   
   // Credit Cards
-  { patterns: [/credit card|amex|card balance/i], handler: 'getCreditCards', mentor: 'donald', principle: 'cashFlow' },
+  { patterns: [/credit card|amex|card balance/i], handler: 'getCreditCards', mentor: 'mike', principle: 'cashFlow' },
   
   // Summary / Overview
-  { patterns: [/summary|overview|scorecard|numbers/i], handler: 'getSummary', mentor: 'keith', principle: 'metrics' }
+  { patterns: [/summary|overview|scorecard|numbers/i], handler: 'getSummary', mentor: 'gino', principle: 'metrics' },
+  
+  // Systems / Process
+  { patterns: [/system|process|automate/i], handler: 'getSummary', mentor: 'david', principle: 'systems' },
+  
+  // Growth / Scaling
+  { patterns: [/grow|scale|bigger/i], handler: 'getSummary', mentor: 'dan10x', principle: 'growth' },
+  
+  // Delegation / Help
+  { patterns: [/delegate|hire|help|who/i], handler: 'getSummary', mentor: 'dan', principle: 'systems' },
+  
+  // Clients / Customers
+  { patterns: [/client|customer|best/i], handler: 'getARDetails', mentor: 'mikePumpkin', principle: 'clarity' },
+  
+  // Habits / Improvement
+  { patterns: [/habit|improve|better/i], handler: 'getWeekComparison', mentor: 'james', principle: 'action' },
+  
+  // Focus / Priorities
+  { patterns: [/focus|priority|important/i], handler: 'getSummary', mentor: 'gino', principle: 'action' },
+  
+  // Why / Purpose
+  { patterns: [/why|purpose|mission/i], handler: 'getSummary', mentor: 'simon', principle: 'clarity' },
+  
+  // Sell / Value
+  { patterns: [/sell|value|worth/i], handler: 'getSummary', mentor: 'john', principle: 'systems' }
 ];
 
 /**
