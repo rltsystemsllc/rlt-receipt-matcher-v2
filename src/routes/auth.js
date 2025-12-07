@@ -99,21 +99,17 @@ router.get('/quickbooks/callback', async (req, res) => {
     await qboClient.handleCallback(fullUrl);
     
     // Read the saved token to display for Railway env var
-    const fs = require('fs');
     let tokenDisplay = '';
-    try {
-      const tokenData = fs.readFileSync('tokens/qbo-token.json', 'utf8');
-      const envVarValue = tokenData.replace(/\s+/g, '');
+    const qboTokens = process.env.QUICKBOOKS_TOKENS;
+    if (qboTokens) {
       tokenDisplay = `
         <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto;">
           <p><strong>⚠️ To persist on Railway, copy this to your Railway env vars:</strong></p>
           <p style="font-family: monospace; font-size: 11px; word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 4px;">
-            QUICKBOOKS_TOKENS=${envVarValue}
+            QUICKBOOKS_TOKENS=${qboTokens}
           </p>
         </div>
       `;
-    } catch (e) {
-      // Token file not readable
     }
     
     res.send(`
