@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RLT Operations Center</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-card: #21262d;
+      --border: #30363d;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --green: #3fb950;
+      --green-bg: rgba(63, 185, 80, 0.15);
+      --red: #f85149;
+      --red-bg: rgba(248, 81, 73, 0.15);
+      --yellow: #d29922;
+      --yellow-bg: rgba(210, 153, 34, 0.15);
+      --blue: #58a6ff;
+      --blue-bg: rgba(88, 166, 255, 0.15);
+      --purple: #a371f7;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header h1 { font-size: 24px; font-weight: 600; display: flex; align-items: center; gap: 12px; }
+    .header p { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
+
+    .header-right { display: flex; align-items: center; gap: 16px; }
+
+    .refresh-btn {
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover { background: var(--bg-secondary); border-color: var(--text-muted); }
+
+    .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Integrations */
+    .integrations { grid-column: span 12; }
+    .integrations-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+
+    .integration-card {
+      padding: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .integration-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      background: var(--bg-card);
+    }
+
+    .integration-info { flex: 1; }
+    .integration-name { font-weight: 600; font-size: 14px; }
+    .integration-status { font-size: 12px; color: var(--text-secondary); }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.connected { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .status-dot.disconnected { background: var(--red); box-shadow: 0 0 8px var(--red); }
+    .status-dot.warning { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+
+    .reconnect-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .reconnect-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+
+    /* Bots */
+    .bots-section { grid-column: span 8; }
+    .bots-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .bot-card {
+      padding: 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .bot-status-indicator {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    .bot-status-indicator.running { background: var(--green-bg); }
+    .bot-status-indicator.warning { background: var(--yellow-bg); }
+    .bot-status-indicator.error { background: var(--red-bg); }
+
+    .bot-info { flex: 1; }
+    .bot-name { font-weight: 600; font-size: 16px; margin-bottom: 2px; }
+    .bot-desc { font-size: 13px; color: var(--text-secondary); }
+
+    .bot-stats {
+      display: flex;
+      gap: 24px;
+      font-size: 13px;
+    }
+
+    .bot-stat { text-align: center; }
+    .bot-stat-value { font-weight: 600; font-size: 18px; color: var(--text-primary); }
+    .bot-stat-label { color: var(--text-muted); font-size: 11px; }
+
+    .bot-actions { display: flex; gap: 8px; }
+
+    .trigger-btn {
+      padding: 8px 16px;
+      background: var(--blue-bg);
+      border: 1px solid var(--blue);
+      border-radius: 6px;
+      color: var(--blue);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .trigger-btn:hover { background: var(--blue); color: white; }
+    .trigger-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* System Info */
+    .system-section { grid-column: span 4; }
+
+    .system-stats { display: flex; flex-direction: column; gap: 12px; }
+
+    .system-stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 12px;
+      background: var(--bg-secondary);
+      border-radius: 6px;
+    }
+
+    .system-stat-label { color: var(--text-secondary); font-size: 13px; }
+    .system-stat-value { font-family: 'JetBrains Mono', monospace; font-size: 13px; }
+
+    /* Quick Links */
+    .quick-links { grid-column: span 12; margin-top: 8px; }
+    .links-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+
+    .quick-link {
+      padding: 10px 20px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+    .quick-link:hover { background: var(--bg-card); border-color: var(--text-muted); }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .integrations-grid { grid-template-columns: repeat(2, 1fr); }
+      .bots-section, .system-section { grid-column: span 12; }
+    }
+
+    @media (max-width: 768px) {
+      .integrations-grid { grid-template-columns: 1fr; }
+      .bot-card { flex-direction: column; text-align: center; }
+      .bot-stats { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div>
+        <h1>🔧 Operations Center</h1>
+        <p id="last-updated">Checking systems...</p>
+      </div>
+      <div class="header-right">
+        <button class="refresh-btn" onclick="loadStatus()">↻ Refresh</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Integrations -->
+      <div class="card integrations">
+        <div class="card-title">🔌 Integrations</div>
+        <div class="integrations-grid" id="integrations">
+          <!-- Will be populated by JS -->
+        </div>
+      </div>
+
+      <!-- Bots -->
+      <div class="card bots-section">
+        <div class="card-title">🤖 Automation Bots</div>
+        <div class="bots-list" id="bots-list">
+          <!-- Will be populated by JS -->
+        </div>
+      </div>
+
+      <!-- System Info -->
+      <div class="card system-section">
+        <div class="card-title">💻 System</div>
+        <div class="system-stats" id="system-stats">
+          <!-- Will be populated by JS -->
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="card quick-links">
+        <div class="card-title">🔗 Quick Actions</div>
+        <div class="links-grid">
+          <a href="/executive" class="quick-link">📊 Executive Scorecard</a>
+          <a href="/dashboard" class="quick-link">🧾 Receipt Dashboard</a>
+          <a href="/auth/quickbooks" class="quick-link">🔑 Re-auth QuickBooks</a>
+          <a href="/auth/gmail" class="quick-link">📧 Re-auth Gmail</a>
+          <a href="/license" class="quick-link">📋 License Helper</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', loadStatus);
+
+    async function loadStatus() {
+      try {
+        const response = await fetch('/operations/api/status');
+        const data = await response.json();
+        
+        updateIntegrations(data.integrations);
+        updateBots(data.bots);
+        updateSystem(data.system);
+        
+        document.getElementById('last-updated').textContent = 
+          `Last checked: ${new Date().toLocaleString()}`;
+      } catch (error) {
+        console.error('Failed to load status:', error);
+        document.getElementById('last-updated').textContent = 'Error loading status';
+      }
+    }
+
+    function updateIntegrations(integrations) {
+      const container = document.getElementById('integrations');
+      
+      const configs = [
+        { key: 'quickbooks', name: 'QuickBooks', icon: '📗', authUrl: '/auth/quickbooks' },
+        { key: 'gmail', name: 'Gmail', icon: '📧', authUrl: '/auth/gmail' },
+        { key: 'ringcentral', name: 'RingCentral', icon: '📱', authUrl: null },
+        { key: 'googleSheets', name: 'Google Sheets', icon: '📊', authUrl: null }
+      ];
+      
+      container.innerHTML = configs.map(cfg => {
+        const status = integrations[cfg.key];
+        const connected = status?.connected;
+        
+        return `
+          <div class="integration-card">
+            <div class="integration-icon">${cfg.icon}</div>
+            <div class="integration-info">
+              <div class="integration-name">${cfg.name}</div>
+              <div class="integration-status">${connected ? 'Connected' : 'Not connected'}</div>
+            </div>
+            <div class="status-dot ${connected ? 'connected' : 'disconnected'}"></div>
+            ${!connected && cfg.authUrl ? `<button class="reconnect-btn" onclick="window.location='${cfg.authUrl}'">Connect</button>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateBots(bots) {
+      const container = document.getElementById('bots-list');
+      
+      const icons = { bot1: '🧾', bot2: '📄', bot3: '📦' };
+      
+      container.innerHTML = bots.map(bot => {
+        const statusClass = bot.status === 'running' ? 'running' : bot.status === 'warning' ? 'warning' : 'error';
+        
+        return `
+          <div class="bot-card">
+            <div class="bot-status-indicator ${statusClass}">${icons[bot.id] || '🤖'}</div>
+            <div class="bot-info">
+              <div class="bot-name">${bot.name}</div>
+              <div class="bot-desc">${bot.description}</div>
+            </div>
+            <div class="bot-stats">
+              ${Object.entries(bot.stats || {}).map(([key, value]) => `
+                <div class="bot-stat">
+                  <div class="bot-stat-value">${value}</div>
+                  <div class="bot-stat-label">${formatLabel(key)}</div>
+                </div>
+              `).join('')}
+            </div>
+            <div class="bot-actions">
+              <button class="trigger-btn" onclick="triggerBot('${bot.id}')" id="trigger-${bot.id}">
+                ▶ Run Now
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function updateSystem(system) {
+      const container = document.getElementById('system-stats');
+      
+      const uptime = formatUptime(system.uptime);
+      const memory = Math.round(system.memory.heapUsed / 1024 / 1024);
+      
+      container.innerHTML = `
+        <div class="system-stat">
+          <span class="system-stat-label">Uptime</span>
+          <span class="system-stat-value">${uptime}</span>
+        </div>
+        <div class="system-stat">
+          <span class="system-stat-label">Memory</span>
+          <span class="system-stat-value">${memory} MB</span>
+        </div>
+        <div class="system-stat">
+          <span class="system-stat-label">Node.js</span>
+          <span class="system-stat-value">${system.nodeVersion}</span>
+        </div>
+        <div class="system-stat">
+          <span class="system-stat-label">Environment</span>
+          <span class="system-stat-value">Production</span>
+        </div>
+      `;
+    }
+
+    async function triggerBot(botId) {
+      const btn = document.getElementById(`trigger-${botId}`);
+      btn.disabled = true;
+      btn.textContent = '⏳ Running...';
+      
+      try {
+        const response = await fetch(`/operations/api/trigger/${botId}`, { method: 'POST' });
+        const result = await response.json();
+        
+        if (result.success) {
+          btn.textContent = '✓ Done';
+          setTimeout(() => {
+            btn.textContent = '▶ Run Now';
+            btn.disabled = false;
+            loadStatus();
+          }, 2000);
+        } else {
+          throw new Error(result.error);
+        }
+      } catch (error) {
+        btn.textContent = '✗ Error';
+        setTimeout(() => {
+          btn.textContent = '▶ Run Now';
+          btn.disabled = false;
+        }, 2000);
+      }
+    }
+
+    function formatUptime(seconds) {
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const mins = Math.floor((seconds % 3600) / 60);
+      
+      if (days > 0) return `${days}d ${hours}h`;
+      if (hours > 0) return `${hours}h ${mins}m`;
+      return `${mins}m`;
+    }
+
+    function formatLabel(key) {
+      return key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+    }
+
+    // Auto-refresh every 30 seconds
+    setInterval(loadStatus, 30000);
+  </script>
+</body>
+</html>
+

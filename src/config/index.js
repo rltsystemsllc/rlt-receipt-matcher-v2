@@ -85,7 +85,55 @@ const config = {
     laborRateEmergency: parseFloat(process.env.LABOR_RATE_EMERGENCY) || 300,
     stockMarkupPercent: parseFloat(process.env.STOCK_MARKUP_PERCENT) || 22,
     schedulerCron: process.env.BOT2_SCHEDULER_CRON || '*/5 * * * *',
-    schedulerEnabled: process.env.BOT2_SCHEDULER_ENABLED !== 'false'
+    schedulerEnabled: process.env.BOT2_SCHEDULER_ENABLED !== 'false',
+    
+    // Column mappings for Daily Job Log (0-indexed)
+    columns: {
+      timestamp: 0,           // A - Timestamp
+      contractorName: 1,      // B - Contractor/Customer Name
+      projectName: 2,         // C - Project Name
+      dateWorked: 3,          // D - Date of Work
+      hoursWorked: 4,         // E - Hours Worked
+      phase: 5,               // F - Phase (Rough/Trim/Service)
+      description: 6,         // G - Description of Work
+      stockMaterials: 7,      // H - Stock Materials Used (backup)
+      purchasedMaterials: 8,  // I - Purchased Materials (backup)
+      urgentBilling: 9,       // J - Urgent Billing Needed
+      emergencyRate: 10,      // K - Emergency Rate
+      notesToBookkeeper: 11,  // L - Notes to Bookkeeper
+      billingStatus: 12       // M - Billing Status (Bot updates this)
+    },
+    
+    // Billing status values
+    statuses: {
+      notBilled: 'Not Billed',
+      draftCreated: 'Draft Created',
+      pendingApproval: 'Pending Approval',
+      approved: 'Approved',
+      sent: 'Sent to Customer',
+      paid: 'Paid'
+    }
+  },
+
+  // Invoice Safeguards (Bot 2 Protection Layers)
+  safeguards: {
+    // Layer 1: Pre-flight sanity checks
+    maxHoursPerDay: parseFloat(process.env.MAX_HOURS_PER_DAY) || 12,
+    minExpectedMaterials: parseFloat(process.env.MIN_EXPECTED_MATERIALS) || 0,
+    invoiceAmountMultiplierWarning: parseFloat(process.env.INVOICE_AMOUNT_MULTIPLIER) || 2.0,
+    
+    // Layer 3: Undo window
+    undoWindowMinutes: parseInt(process.env.UNDO_WINDOW_MINUTES) || 5,
+    
+    // Layer 4: Two-stage approval threshold
+    largeInvoiceThreshold: parseFloat(process.env.LARGE_INVOICE_THRESHOLD) || 2500,
+    
+    // Layer 5: Daily reconciliation
+    dailyReconciliationTime: process.env.DAILY_RECONCILIATION_TIME || '17:00', // 5 PM
+    
+    // Emergency rate auto-detection
+    autoDetectEmergencyRate: process.env.AUTO_DETECT_EMERGENCY_RATE !== 'false',
+    emergencyRateDays: [0, 6], // Sunday = 0, Saturday = 6
   },
 
   // Inventory config (Bot 3 uses this)

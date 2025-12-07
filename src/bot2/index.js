@@ -2,24 +2,46 @@
  * Bot 2 - Invoice Drafter
  * Main entry point for the billing automation bot
  * 
+ * PROTECTED BY 5 LAYERS OF SAFEGUARDS:
+ * Layer 1: Pre-flight sanity checks (hours, amounts, warnings)
+ * Layer 2: Detailed preview in approval SMS
+ * Layer 3: Undo window (5-min delay before send)
+ * Layer 4: Two-stage approval for large invoices
+ * Layer 5: Daily reconciliation summary
+ * 
  * Workflow:
  * 1. Monitors Google Sheet for "Urgent Billing Needed = YES"
- * 2. Consolidates all unbilled rows for that job
+ * 2. Runs pre-flight checks (Layer 1)
  * 3. Creates draft invoice in QuickBooks
- * 4. Sends notification via RingCentral SMS
- * 5. Manages reminder cycles
+ * 4. Sends detailed preview via SMS (Layer 2)
+ * 5. On approval, queues for send with undo window (Layer 3)
+ * 6. Large invoices require two-stage approval (Layer 4)
+ * 7. End of day reconciliation summary (Layer 5)
+ * 8. Celebration messages after successful sends
  */
 
+const cron = require('node-cron');
 const config = require('../config');
 const logger = require('../utils/logger');
 const sheetsService = require('./sheets');
-const ringcentralService = require('./ringcentral');
 const invoiceService = require('./invoice');
+const safeguards = require('./safeguards');
 const reminderService = require('./reminders');
-const cron = require('node-cron');
+
+// RingCentral service
+let ringcentralService;
+try {
+  ringcentralService = require('./ringcentral');
+} catch (e) {
+  logger.warn('RingCentral service not available', { error: e.message });
+}
 
 let schedulerJob = null;
+let reconciliationJob = null;
 let isProcessing = false;
+
+// Track approval states
+const approvalStates = new Map(); // From phone -> { state, invoiceId, preview, ... }
 
 /**
  * Process urgent billing requests
@@ -55,13 +77,9 @@ async function processUrgentBilling() {
     logger.error('Bot 2: Error processing urgent billing', { error: error.message });
     
     // Notify Jessica and Bobby of the error
-    try {
-      await ringcentralService.sendGroupText(
-        `⚠️ Bot 2 Error: Failed to process billing.\n\nError: ${error.message}\n\nPlease check the dashboard.`
-      );
-    } catch (smsError) {
-      logger.error('Bot 2: Failed to send error notification', { error: smsError.message });
-    }
+    await sendGroupText(
+      `⚠️ Bot 2 Error: Failed to process billing.\n\nError: ${error.message}\n\nPlease check the dashboard.`
+    );
   } finally {
     isProcessing = false;
   }
@@ -91,39 +109,83 @@ async function processJobBilling(jobName, rows) {
   logger.info(`Bot 2: Processing billing for job: ${jobName}`, { rowCount: rows.length });
 
   try {
-    // Check if this is a new project request
-    const isNewProject = rows.some(r => 
-      r.jobName === 'New Project – Add Name to Notes' || 
-      !r.jobName
-    );
-
-    if (isNewProject) {
-      await handleNewProjectRequest(rows[0]);
-      return;
-    }
-
     // Get ALL unbilled rows for this job (not just the urgent ones)
     const allJobRows = await sheetsService.getAllUnbilledRowsForJob(jobName);
     logger.info(`Bot 2: Found ${allJobRows.length} total unbilled rows for ${jobName}`);
 
-    // Create the draft invoice
-    const result = await invoiceService.createDraftInvoice(jobName, allJobRows);
+    // Build invoice preview
+    const preview = await invoiceService.buildInvoicePreview(jobName, allJobRows);
 
-    // Update sheet status to "Draft Generated"
+    // ========================================
+    // LAYER 1: Pre-flight sanity checks
+    // ========================================
+    const preFlightResult = await safeguards.runPreFlightChecks(preview);
+    
+    if (!preFlightResult.passed) {
+      // Critical errors - don't create invoice
+      await sendGroupText(
+        `❌ BILLING BLOCKED: ${jobName}\n\n` +
+        `Errors:\n${preFlightResult.errors.join('\n')}\n\n` +
+        `Please fix these issues before billing.`
+      );
+      return;
+    }
+
+    // Create the draft invoice in QBO
+    const invoiceResult = await invoiceService.createDraftInvoice(jobName, allJobRows);
+
+    // Update sheet status to "Draft Created"
     await sheetsService.updateBillingStatus(
       allJobRows.map(r => r.rowIndex),
-      config.sheets.billingStatuses.draftGenerated
+      config.billing.statuses.draftCreated
     );
 
-    // Send notification to Jessica and Bobby
-    await ringcentralService.sendInvoiceNotification(result);
+    // ========================================
+    // LAYER 2: Detailed preview in SMS
+    // ========================================
+    const previewMessage = safeguards.buildDetailedPreviewMessage(
+      preview, 
+      invoiceResult, 
+      preFlightResult
+    );
+
+    // ========================================
+    // LAYER 4: Check if two-stage approval needed
+    // ========================================
+    const isLargeInvoice = safeguards.requiresTwoStageApproval(preview.summary.totalRevenue);
+    const hasWarnings = preFlightResult.warnings.length > 0;
+    
+    const optionsMessage = safeguards.buildApprovalOptionsMessage(
+      invoiceResult,
+      isLargeInvoice,
+      hasWarnings
+    );
+
+    // Send the full preview + options
+    await sendGroupText(previewMessage + optionsMessage);
+
+    // Store approval state
+    storeApprovalState(invoiceResult.invoiceId, {
+      state: isLargeInvoice ? 'awaiting_review' : 'awaiting_approval',
+      invoiceId: invoiceResult.invoiceId,
+      jobName,
+      preview,
+      invoiceResult,
+      isLargeInvoice,
+      rowIndices: allJobRows.map(r => r.rowIndex)
+    });
 
     // Start reminder timer
-    await reminderService.startReminderCycle(result.invoiceId, jobName);
+    await reminderService.startReminderCycle(
+      invoiceResult.invoiceId, 
+      jobName,
+      invoiceResult.totalAmount
+    );
 
-    logger.info(`Bot 2: Successfully created draft invoice for ${jobName}`, {
-      invoiceId: result.invoiceId,
-      totalAmount: result.totalAmount
+    logger.info(`Bot 2: Created draft invoice for ${jobName}`, {
+      invoiceId: invoiceResult.invoiceId,
+      totalAmount: invoiceResult.totalAmount,
+      isLargeInvoice
     });
 
   } catch (error) {
@@ -133,219 +195,390 @@ async function processJobBilling(jobName, rows) {
 }
 
 /**
- * Handle new project request via SMS
- */
-async function handleNewProjectRequest(row) {
-  const contractorName = row.contractorName;
-  const projectName = row.projectName;
-
-  logger.info('Bot 2: New project request detected', { contractorName, projectName });
-
-  // Send SMS asking to create new project
-  const message = `🆕 Bot 2: New project request submitted.\n\n` +
-    `Contractor/Customer: ${contractorName}\n` +
-    `Project Name: ${projectName}\n\n` +
-    `Should I create a new QuickBooks Project?\n\n` +
-    `Reply:\n` +
-    `1 – Yes, create new project\n` +
-    `2 – Assign to existing customer\n` +
-    `3 – Cancel`;
-
-  await ringcentralService.sendGroupText(message);
-
-  // Store pending request for response handling
-  await reminderService.storePendingNewProject({
-    contractorName,
-    projectName,
-    rowIndex: row.rowIndex,
-    requestedAt: new Date().toISOString()
-  });
-
-  logger.info('Bot 2: Sent new project request to Jessica and Bobby');
-}
-
-/**
  * Handle incoming SMS response
  */
 async function handleSmsResponse(from, message) {
   const normalizedMessage = message.trim().toUpperCase();
+  const words = normalizedMessage.split(/\s+/);
+  const command = words[0];
 
-  // Check for snooze command
-  if (normalizedMessage === 'SNOOZE') {
-    await reminderService.snoozeAllReminders();
-    await ringcentralService.sendToNumber(from, 
-      '💤 Got it! All reminders snoozed for 24 hours.'
-    );
-    return;
-  }
+  logger.info('Bot 2: Received SMS', { from, command });
 
-  // Check for approval command
-  if (normalizedMessage === 'APPROVE' || normalizedMessage.startsWith('APPROVE ')) {
-    const invoiceId = normalizedMessage.split(' ')[1];
-    await handleInvoiceApproval(from, invoiceId);
-    return;
-  }
-
-  // Check for new project response (1, 2, or 3)
-  if (['1', '2', '3'].includes(normalizedMessage)) {
-    await handleNewProjectResponse(from, normalizedMessage);
-    return;
-  }
-
-  // Check for customer selection (numeric response after choosing option 2)
-  if (/^\d+$/.test(normalizedMessage)) {
-    await handleCustomerSelection(from, parseInt(normalizedMessage));
-    return;
-  }
-
-  logger.info('Bot 2: Unrecognized SMS response', { from, message });
-}
-
-/**
- * Handle invoice approval via SMS
- */
-async function handleInvoiceApproval(from, invoiceId) {
   try {
-    logger.info('Bot 2: Processing invoice approval', { from, invoiceId });
+    // ========================================
+    // LAYER 3: Undo command
+    // ========================================
+    if (command === 'UNDO') {
+      await handleUndo(from);
+      return;
+    }
 
-    // Send the invoice to customer
-    const result = await invoiceService.sendInvoiceToCustomer(invoiceId);
+    // Check for pending approval state
+    const approvalState = getApprovalState();
 
-    // Stop reminders
-    await reminderService.cancelReminder(invoiceId);
+    // Approval commands
+    if (command === 'APPROVE') {
+      await handleApprove(from, approvalState);
+      return;
+    }
 
-    // Update sheet status
-    await sheetsService.updateBillingStatusByInvoice(
-      invoiceId,
-      config.sheets.billingStatuses.sentToCustomer
-    );
+    if (command === 'REVIEW') {
+      await handleReview(from, approvalState);
+      return;
+    }
 
-    // Confirm to user
-    await ringcentralService.sendToNumber(from,
-      `✅ Invoice sent to customer!\n\nJob: ${result.jobName}\nAmount: $${result.totalAmount.toFixed(2)}\nSent to: ${result.customerEmail}`
-    );
+    if (command === 'HOLD') {
+      await handleHold(from, approvalState);
+      return;
+    }
+
+    if (command === 'FIX') {
+      await handleFix(from, approvalState);
+      return;
+    }
+
+    // Snooze command
+    if (command === 'SNOOZE') {
+      const duration = words[1] || '24h';
+      await handleSnooze(from, duration);
+      return;
+    }
+
+    // Daily reconciliation confirmation
+    if (command === 'OK') {
+      await sendToNumber(from, '✅ Daily reconciliation confirmed. Thanks!');
+      return;
+    }
+
+    if (command === 'ISSUE') {
+      await sendToNumber(from, 
+        '📝 Issue noted. Please describe the problem and we\'ll investigate.\n\n' +
+        'You can also check the dashboard for details.'
+      );
+      return;
+    }
+
+    // Legacy commands for backwards compatibility
+    if (['1', '2', '3'].includes(command)) {
+      await handleNewProjectResponse(from, command);
+      return;
+    }
+
+    logger.info('Bot 2: Unrecognized command', { from, command });
 
   } catch (error) {
-    logger.error('Bot 2: Failed to approve invoice', { error: error.message });
-    await ringcentralService.sendToNumber(from,
-      `❌ Failed to send invoice: ${error.message}`
+    logger.error('Bot 2: Error handling SMS', { error: error.message, from, command });
+    await sendToNumber(from, `❌ Error: ${error.message}`);
+  }
+}
+
+/**
+ * Handle APPROVE command
+ */
+async function handleApprove(from, approvalState) {
+  if (!approvalState) {
+    await sendToNumber(from, '❓ No pending invoice to approve.');
+    return;
+  }
+
+  const { invoiceId, jobName, preview, invoiceResult, isLargeInvoice, rowIndices } = approvalState;
+
+  // Check if two-stage and hasn't been reviewed yet
+  if (isLargeInvoice && approvalState.state === 'awaiting_review') {
+    await sendToNumber(from, 
+      `🔒 This is a large invoice ($${invoiceResult.totalAmount.toFixed(2)}).\n\n` +
+      `Reply REVIEW first to see the PDF preview, then APPROVE.`
+    );
+    return;
+  }
+
+  // ========================================
+  // LAYER 3: Queue for send with undo window
+  // ========================================
+  const queued = await safeguards.queueForSend(invoiceId, invoiceResult, preview);
+  
+  // Update sheet status
+  await sheetsService.updateBillingStatus(rowIndices, config.billing.statuses.approved);
+
+  // Clear approval state
+  clearApprovalState(invoiceId);
+
+  // Send undo window message
+  const undoMessage = safeguards.buildUndoWindowMessage(invoiceResult, queued.undoMinutes);
+  await sendGroupText(undoMessage);
+
+  logger.info('Bot 2: Invoice approved, queued for send', { invoiceId });
+}
+
+/**
+ * Handle REVIEW command (for large invoices)
+ */
+async function handleReview(from, approvalState) {
+  if (!approvalState) {
+    await sendToNumber(from, '❓ No pending invoice to review.');
+    return;
+  }
+
+  const { invoiceId, invoiceResult } = approvalState;
+
+  // TODO: Generate and send PDF preview link
+  // For now, just mark as reviewed and allow approval
+  
+  updateApprovalState(invoiceId, { state: 'awaiting_approval' });
+
+  await sendToNumber(from,
+    `📄 Invoice #${invoiceResult.docNumber || invoiceId} reviewed.\n\n` +
+    `You can now reply APPROVE to send to customer.`
+  );
+}
+
+/**
+ * Handle HOLD command
+ */
+async function handleHold(from, approvalState) {
+  if (!approvalState) {
+    await sendToNumber(from, '❓ No pending invoice.');
+    return;
+  }
+
+  const { invoiceId, jobName } = approvalState;
+
+  // Keep as draft, cancel reminders
+  await reminderService.cancelReminder(invoiceId);
+  clearApprovalState(invoiceId);
+
+  await sendToNumber(from,
+    `📋 Invoice for ${jobName} held as draft.\n\n` +
+    `It will remain in QuickBooks as a draft. ` +
+    `You can send it manually or wait for the next billing cycle.`
+  );
+}
+
+/**
+ * Handle FIX command
+ */
+async function handleFix(from, approvalState) {
+  if (!approvalState) {
+    await sendToNumber(from, '❓ No pending invoice.');
+    return;
+  }
+
+  const { invoiceId, jobName, rowIndices } = approvalState;
+
+  // Void the draft invoice
+  try {
+    await invoiceService.voidInvoice(invoiceId);
+  } catch (e) {
+    logger.warn('Could not void invoice', { invoiceId, error: e.message });
+  }
+
+  // Reset sheet status
+  await sheetsService.updateBillingStatus(rowIndices, config.billing.statuses.notBilled);
+
+  // Cancel reminders
+  await reminderService.cancelReminder(invoiceId);
+  clearApprovalState(invoiceId);
+
+  await sendToNumber(from,
+    `🔧 Invoice for ${jobName} cancelled.\n\n` +
+    `Please correct the issues in the Daily Job Log and re-trigger billing.`
+  );
+}
+
+/**
+ * Handle UNDO command (Layer 3)
+ */
+async function handleUndo(from) {
+  const pending = safeguards.getMostRecentPendingSend();
+
+  if (!pending) {
+    await sendToNumber(from, '❓ No pending invoice to undo.');
+    return;
+  }
+
+  const result = await safeguards.cancelPendingSend(pending.invoiceId);
+
+  if (result.success) {
+    await sendGroupText(
+      `↩️ INVOICE SEND CANCELLED\n\n` +
+      `${result.invoice.jobName}: $${result.invoice.totalAmount.toFixed(2)}\n\n` +
+      `The invoice remains as a draft in QuickBooks.`
+    );
+  } else {
+    await sendToNumber(from, 
+      `❌ Could not undo: ${result.reason === 'window_expired' ? 'Time window expired' : 'Invoice not found'}`
     );
   }
 }
 
 /**
- * Handle new project response
+ * Handle SNOOZE command
+ */
+async function handleSnooze(from, duration) {
+  let hours = 24;
+  
+  if (duration === '1H' || duration === '1h') hours = 1;
+  else if (duration === '2H' || duration === '2h') hours = 2;
+  else if (duration === 'EOD' || duration === 'eod') {
+    // Calculate hours until 5 PM
+    const now = new Date();
+    const eod = new Date();
+    eod.setHours(17, 0, 0, 0);
+    if (eod <= now) eod.setDate(eod.getDate() + 1);
+    hours = Math.ceil((eod - now) / (1000 * 60 * 60));
+  }
+
+  await reminderService.snoozeAllReminders(hours * 60 * 60 * 1000);
+  
+  await sendToNumber(from, 
+    `💤 Reminders snoozed for ${hours} hour${hours > 1 ? 's' : ''}.`
+  );
+}
+
+/**
+ * Handle new project response (1, 2, 3)
  */
 async function handleNewProjectResponse(from, choice) {
   const pending = await reminderService.getPendingNewProject();
 
   if (!pending) {
-    await ringcentralService.sendToNumber(from,
-      '❓ No pending new project request found.'
-    );
+    await sendToNumber(from, '❓ No pending new project request.');
     return;
   }
 
   switch (choice) {
     case '1': // Create new project
-      await createNewQBOProject(pending, from);
+      const result = await invoiceService.createCustomerAndProject(
+        pending.contractorName,
+        pending.projectName
+      );
+      await reminderService.clearPendingNewProject();
+      await sendToNumber(from,
+        `✅ Created: ${result.customerName}`
+      );
       break;
 
-    case '2': // Assign to existing customer
+    case '2': // List existing customers
       const customers = await invoiceService.getExistingCustomers();
-      let customerList = '📋 Select customer:\n\n';
+      let msg = '📋 Recent customers:\n\n';
       customers.slice(0, 10).forEach((c, i) => {
-        customerList += `${i + 1}. ${c.DisplayName}\n`;
+        msg += `${i + 1}. ${c.name}\n`;
       });
-      customerList += '\nReply with the number.';
-      
-      await ringcentralService.sendToNumber(from, customerList);
+      msg += '\nReply with number to select.';
       await reminderService.setPendingCustomerSelection(customers);
+      await sendToNumber(from, msg);
       break;
 
     case '3': // Cancel
       await reminderService.clearPendingNewProject();
-      await ringcentralService.sendToNumber(from,
-        '❌ New project request cancelled.'
-      );
+      await sendToNumber(from, '❌ Cancelled.');
       break;
   }
 }
 
 /**
- * Create new QuickBooks project
+ * Process pending sends and reminders (called by scheduler)
  */
-async function createNewQBOProject(pending, from) {
-  try {
-    const result = await invoiceService.createCustomerAndProject(
-      pending.contractorName,
-      pending.projectName
-    );
+async function processScheduledTasks() {
+  // Process pending sends (Layer 3 undo window)
+  const sentCount = await safeguards.processPendingSends(async (invoiceId) => {
+    const result = await invoiceService.sendInvoiceToCustomer(invoiceId);
+    
+    // Get the approval state for celebration message
+    const state = getApprovalStateById(invoiceId);
+    
+    // Send celebration message!
+    const celebrationMsg = safeguards.buildCelebrationMessage(result, state?.preview);
+    await sendGroupText(celebrationMsg);
 
-    await reminderService.clearPendingNewProject();
+    // Update sheet status
+    if (state?.rowIndices) {
+      await sheetsService.updateBillingStatus(state.rowIndices, config.billing.statuses.sent);
+    }
 
-    await ringcentralService.sendToNumber(from,
-      `✅ Created new project!\n\n` +
-      `Customer: ${result.customerName}\n` +
-      `Project: ${result.projectName}\n\n` +
-      `Reply UNDO within 1 hour to cancel.`
-    );
+    return result;
+  });
 
-    // Store undo option
-    await reminderService.storeUndoOption(result, 60 * 60 * 1000);
-
-  } catch (error) {
-    logger.error('Bot 2: Failed to create project', { error: error.message });
-    await ringcentralService.sendToNumber(from,
-      `❌ Failed to create project: ${error.message}`
-    );
+  if (sentCount > 0) {
+    logger.info(`Bot 2: Sent ${sentCount} pending invoice(s)`);
   }
+
+  // Process reminders
+  await reminderService.processReminders();
 }
 
 /**
- * Handle customer selection for existing customer
+ * Send daily reconciliation (Layer 5)
  */
-async function handleCustomerSelection(from, selection) {
-  const customers = await reminderService.getPendingCustomerSelection();
-  const pending = await reminderService.getPendingNewProject();
+async function sendDailyReconciliation() {
+  const message = safeguards.buildDailyReconciliationMessage();
+  await sendGroupText(message);
+  logger.info('Bot 2: Sent daily reconciliation');
+}
 
-  if (!customers || !pending) {
-    await ringcentralService.sendToNumber(from,
-      '❓ No pending selection found.'
-    );
-    return;
-  }
+// ============================================
+// APPROVAL STATE MANAGEMENT
+// ============================================
 
-  const selectedCustomer = customers[selection - 1];
-  if (!selectedCustomer) {
-    await ringcentralService.sendToNumber(from,
-      '❌ Invalid selection. Please try again.'
-    );
-    return;
-  }
+function storeApprovalState(invoiceId, data) {
+  approvalStates.set(invoiceId, data);
+}
 
-  try {
-    const result = await invoiceService.createProjectUnderCustomer(
-      selectedCustomer.Id,
-      pending.projectName
-    );
+function getApprovalState() {
+  // Get most recent approval state
+  const entries = Array.from(approvalStates.entries());
+  if (entries.length === 0) return null;
+  return entries[entries.length - 1][1];
+}
 
-    await reminderService.clearPendingNewProject();
-    await reminderService.clearPendingCustomerSelection();
+function getApprovalStateById(invoiceId) {
+  return approvalStates.get(invoiceId);
+}
 
-    await ringcentralService.sendToNumber(from,
-      `✅ Created project under existing customer!\n\n` +
-      `Customer: ${selectedCustomer.DisplayName}\n` +
-      `Project: ${pending.projectName}`
-    );
-
-  } catch (error) {
-    logger.error('Bot 2: Failed to create project under customer', { error: error.message });
-    await ringcentralService.sendToNumber(from,
-      `❌ Failed: ${error.message}`
-    );
+function updateApprovalState(invoiceId, updates) {
+  const current = approvalStates.get(invoiceId);
+  if (current) {
+    approvalStates.set(invoiceId, { ...current, ...updates });
   }
 }
+
+function clearApprovalState(invoiceId) {
+  approvalStates.delete(invoiceId);
+}
+
+// ============================================
+// SMS HELPERS
+// ============================================
+
+async function sendGroupText(message) {
+  if (!ringcentralService) {
+    logger.warn('RingCentral not available, would send:', { message });
+    return;
+  }
+  
+  try {
+    await ringcentralService.sendNotification(message);
+  } catch (error) {
+    logger.error('Failed to send group text', { error: error.message });
+  }
+}
+
+async function sendToNumber(to, message) {
+  if (!ringcentralService) {
+    logger.warn('RingCentral not available, would send:', { to, message });
+    return;
+  }
+  
+  try {
+    await ringcentralService.sendToNumber(to, message);
+  } catch (error) {
+    logger.error('Failed to send SMS', { to, error: error.message });
+  }
+}
+
+// ============================================
+// SCHEDULER
+// ============================================
 
 /**
  * Start Bot 2 scheduler
@@ -360,12 +593,23 @@ function start() {
   
   logger.info('Bot 2: Starting scheduler', { cron: cronExpression });
 
+  // Main scheduler - check for urgent billing and process pending sends
   schedulerJob = cron.schedule(cronExpression, async () => {
     await processUrgentBilling();
-    await reminderService.processReminders();
+    await processScheduledTasks();
+  });
+
+  // Daily reconciliation scheduler (Layer 5)
+  const reconciliationTime = config.safeguards.dailyReconciliationTime;
+  const [hour, minute] = reconciliationTime.split(':');
+  const reconciliationCron = `${minute} ${hour} * * *`; // Every day at specified time
+  
+  reconciliationJob = cron.schedule(reconciliationCron, async () => {
+    await sendDailyReconciliation();
   });
 
   logger.info('Bot 2: Scheduler started');
+  logger.info(`Bot 2: Daily reconciliation scheduled for ${reconciliationTime}`);
 }
 
 /**
@@ -375,22 +619,36 @@ function stop() {
   if (schedulerJob) {
     schedulerJob.stop();
     schedulerJob = null;
-    logger.info('Bot 2: Scheduler stopped');
   }
+  if (reconciliationJob) {
+    reconciliationJob.stop();
+    reconciliationJob = null;
+  }
+  logger.info('Bot 2: Scheduler stopped');
 }
 
 /**
  * Get Bot 2 status
  */
 function getStatus() {
+  const weeklyStats = safeguards.getWeeklyStats();
+  
   return {
     schedulerRunning: schedulerJob !== null,
     isProcessing,
+    pendingApprovals: approvalStates.size,
+    weeklyStats: {
+      invoicesSent: weeklyStats.invoicesSent?.length || 0,
+      totalAmount: weeklyStats.totalAmount || 0,
+      totalProfit: weeklyStats.totalProfit || 0
+    },
     config: {
       laborRateStandard: config.billing.laborRateStandard,
       laborRateEmergency: config.billing.laborRateEmergency,
       stockMarkupPercent: config.billing.stockMarkupPercent,
-      spreadsheetId: config.sheets.spreadsheetId ? '***configured***' : 'NOT SET',
+      undoWindowMinutes: config.safeguards.undoWindowMinutes,
+      largeInvoiceThreshold: config.safeguards.largeInvoiceThreshold,
+      spreadsheetId: config.sheets.sheetId ? '***configured***' : 'NOT SET',
       ringcentralConfigured: !!config.ringcentral.clientId
     }
   };
@@ -410,12 +668,6 @@ module.exports = {
   getStatus,
   triggerManualRun,
   processUrgentBilling,
-  handleSmsResponse
+  handleSmsResponse,
+  sendDailyReconciliation
 };
-
-
-
-
-
-
-

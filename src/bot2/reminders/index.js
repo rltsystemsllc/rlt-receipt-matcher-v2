@@ -80,17 +80,21 @@ async function cancelReminder(invoiceId) {
 }
 
 /**
- * Snooze all reminders for 24 hours
+ * Snooze all reminders for specified duration
+ * @param {number} durationMs - Duration in milliseconds (default 24 hours)
  */
-async function snoozeAllReminders() {
-  const snoozedUntil = Date.now() + config.billing.snoozeDuration;
+async function snoozeAllReminders(durationMs = 24 * 60 * 60 * 1000) {
+  const snoozedUntil = Date.now() + durationMs;
   
   for (const invoiceId of Object.keys(state.activeReminders)) {
     state.activeReminders[invoiceId].snoozedUntil = snoozedUntil;
   }
 
   await saveState();
-  logger.info('Snoozed all reminders', { until: new Date(snoozedUntil).toISOString() });
+  logger.info('Snoozed all reminders', { 
+    until: new Date(snoozedUntil).toISOString(),
+    durationHours: durationMs / (60 * 60 * 1000)
+  });
 }
 
 /**
