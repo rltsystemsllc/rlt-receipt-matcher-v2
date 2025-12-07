@@ -56,6 +56,13 @@ async function processUrgentBilling() {
   logger.info('Bot 2: Checking for urgent billing requests...');
 
   try {
+    // Check if Sheets is authenticated first
+    const sheetsReady = await sheetsService.isAuthenticated();
+    if (!sheetsReady) {
+      logger.info('Bot 2: Google Sheets not connected, skipping billing check');
+      return; // Silent skip - don't error if sheets not connected
+    }
+
     // Get all rows with "Urgent Billing Needed = YES" and "Not Billed" status
     const urgentRows = await sheetsService.getUrgentBillingRows();
     
