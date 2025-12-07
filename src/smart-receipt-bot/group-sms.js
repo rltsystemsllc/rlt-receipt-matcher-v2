@@ -1,47 +1,29 @@
 /**
  * Group SMS Handler
  * 
- * Sends SMS/MMS to both Bobby and Jessica
- * Handles replies from either person
- * 
- * Uses the existing Bot 2 RingCentral service for authentication
+ * Sends SMS/MMS to Bobby AND Jessica in ONE group chat thread
  */
 
 const ringcentralService = require('../bot2/ringcentral');
 const config = require('../config');
 const logger = require('../utils/logger');
 
-// Group members - Bobby and Jessica
+// Group members for reference
 const GROUP_MEMBERS = [
   { name: 'Bobby', phone: config.notifications.bobbyPhone },
   { name: 'Jessica', phone: config.notifications.jessicaPhone }
 ];
 
-// Reply handler
 let replyHandler = null;
 
 /**
- * Send text message to group (both Bobby and Jessica)
+ * Send text message to GROUP (single thread with both Bobby and Jessica)
  */
 async function send(message) {
   try {
-    const results = [];
-    
-    // Send to each group member using existing RingCentral service
-    for (const member of GROUP_MEMBERS) {
-      try {
-        await ringcentralService.sendSMS(member.phone, message);
-        results.push({ name: member.name, success: true });
-        logger.info('SMS sent to group member', { to: member.name, preview: message.substring(0, 50) });
-      } catch (error) {
-        results.push({ name: member.name, success: false, error: error.message });
-        logger.error('Failed to send SMS to group member', { to: member.name, error: error.message });
-      }
-    }
-
-    // Return true if at least one message was sent
-    return results.some(r => r.success);
-
+    await ringcentralService.sendGroupSMS(message);
+    logger.info('Group SMS sent', { preview: message.substring(0, 50) });
+    return true;
   } catch (error) {
     logger.error('Failed to send group SMS', { error: error.message });
     throw error;
@@ -49,38 +31,18 @@ async function send(message) {
 }
 
 /**
- * Send MMS with image to group
- * Sends receipt image so Bobby/Jessica can see it and identify the job
+ * Send MMS with image to GROUP (single thread with both Bobby and Jessica)
  */
 async function sendWithImage(message, imageData, filename = 'receipt.jpg') {
   try {
-    const results = [];
-    
-    // Send MMS to each group member
-    for (const member of GROUP_MEMBERS) {
-      try {
-        if (imageData) {
-          await ringcentralService.sendMMS(member.phone, message, imageData, filename);
-        } else {
-          await ringcentralService.sendSMS(member.phone, message);
-        }
-        results.push({ name: member.name, success: true });
-        logger.info('MMS sent to group member', { to: member.name, hasImage: !!imageData });
-      } catch (error) {
-        // If MMS fails, try SMS without image
-        logger.warn('MMS failed, trying SMS', { to: member.name, error: error.message });
-        try {
-          await ringcentralService.sendSMS(member.phone, message + '\n\n📷 [Image could not be sent]');
-          results.push({ name: member.name, success: true, fallback: true });
-        } catch (smsError) {
-          results.push({ name: member.name, success: false, error: smsError.message });
-          logger.error('Failed to send to group member', { to: member.name, error: smsError.message });
-        }
-      }
+    if (imageData) {
+      await ringcentralService.sendGroupMMS(message, imageData, filename);
+      logger.info('Group MMS sent with image');
+    } else {
+      await ringcentralService.sendGroupSMS(message);
+      logger.info('Group SMS sent (no image)');
     }
-
-    return results.some(r => r.success);
-
+    return true;
   } catch (error) {
     logger.error('Failed to send group MMS', { error: error.message });
     // Fall back to text-only
@@ -112,7 +74,6 @@ function onReply(handler) {
 
 /**
  * Process incoming SMS from webhook
- * Called by the smart-receipt routes webhook handler
  */
 function processIncomingMessage(message) {
   try {
