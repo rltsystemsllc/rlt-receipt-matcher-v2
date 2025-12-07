@@ -1,23 +1,6 @@
 /**
  * RLT Automation System
  * Main entry point
- * 
- * Bot 1 - Receipt Processor:
- *   1. Reads receipts from Gmail
- *   2. Parses vendor, amount, date, and job info
- *   3. Matches and syncs to QuickBooks Online as billable expenses
- * 
- * Bot 2 - Invoice Drafter:
- *   1. Monitors Google Sheet for urgent billing requests
- *   2. Creates draft invoices in QuickBooks
- *   3. Sends notifications via RingCentral SMS
- *   4. Manages reminder cycles
- * 
- * Bot 3 - Inventory Bot:
- *   1. Receives inbound RingCentral SMS (NFC/QR/manual trigger)
- *   2. Guides Bobby through material logging before installation
- *   3. Writes material pulls to Google Sheet (Inventory Pull Log)
- *   4. Links inventory to job records for billing
  */
 
 require('dotenv').config();
@@ -86,27 +69,14 @@ app.use((req, res) => {
 
 // Startup
 async function start() {
-  // Validate configuration
   const bot1Errors = config.validateBot1();
   const bot2Errors = config.validateBot2();
   const bot3Errors = config.validateBot3();
   
-  if (bot1Errors.length > 0) {
-    logger.warn('Bot 1 configuration warnings:', { errors: bot1Errors });
-  }
-  if (bot2Errors.length > 0) {
-    logger.warn('Bot 2 configuration warnings:', { errors: bot2Errors });
-  }
-  if (bot3Errors.length > 0) {
-    logger.warn('Bot 3 configuration warnings:', { errors: bot3Errors });
-  }
-  
-  if (bot1Errors.length > 0 || bot2Errors.length > 0 || bot3Errors.length > 0) {
-    logger.info('Some features may not work until configuration is complete.');
-    logger.info('Copy env.example to .env and fill in your credentials.');
-  }
+  if (bot1Errors.length > 0) logger.warn('Bot 1 configuration warnings:', { errors: bot1Errors });
+  if (bot2Errors.length > 0) logger.warn('Bot 2 configuration warnings:', { errors: bot2Errors });
+  if (bot3Errors.length > 0) logger.warn('Bot 3 configuration warnings:', { errors: bot3Errors });
 
-  // Start server (bind to 0.0.0.0 for Railway/cloud deployment)
   const host = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
   app.listen(config.port, host, () => {
     logger.info('='.repeat(60));
@@ -117,92 +87,39 @@ async function start() {
     logger.info('');
     logger.info('🟧 BOT 1 - Receipt Processor');
     logger.info(`   Dashboard: http://localhost:${config.port}/`);
-    logger.info(`   Gmail Auth: http://localhost:${config.port}/auth/gmail`);
-    logger.info(`   QBO Auth: http://localhost:${config.port}/auth/quickbooks`);
     logger.info('');
     logger.info('🟩 BOT 2 - Invoice Drafter');
     logger.info(`   Dashboard: http://localhost:${config.port}/bot2`);
-    logger.info(`   Sheets Auth: http://localhost:${config.port}/auth/sheets`);
-    logger.info('');
-    logger.info('🟦 BOT 3 - Inventory Bot');
-    logger.info(`   Dashboard: http://localhost:${config.port}/bot3`);
-    logger.info(`   SMS Webhook: http://localhost:${config.port}/bot3/webhook/sms`);
-    logger.info('');
-    logger.info('📋 LICENSE HELPER TOOL');
-    logger.info(`   Dashboard: http://localhost:${config.port}/license`);
-    logger.info('');
-    logger.info('📊 EXECUTIVE SCORECARD');
-    logger.info(`   Dashboard: http://localhost:${config.port}/executive`);
-    logger.info('');
-    logger.info('🔧 OPERATIONS CENTER');
-    logger.info(`   Dashboard: http://localhost:${config.port}/operations`);
     logger.info('');
     logger.info('🤖 SMART RECEIPT BOT');
     logger.info(`   Dashboard: http://localhost:${config.port}/smart-receipt`);
-    logger.info(`   SMS Webhook: http://localhost:${config.port}/smart-receipt/webhook/sms`);
+    logger.info('');
+    logger.info('📊 EXECUTIVE SCORECARD');
+    logger.info(`   Dashboard: http://localhost:${config.port}/executive`);
     logger.info('='.repeat(60));
   });
 
-  // Start Bot 1 scheduler (receipt processing)
+  // Start schedulers
   scheduler.start();
-  
-  // Start Bot 2 scheduler (invoice drafting)
   bot2.start();
-  
-  // Start SMS Alerts scheduler (Monday scorecard, Friday wins)
   smsAlerts.start();
   
-  // Start Smart Receipt Bot and scheduler
-  startSmartReceiptBot();
+  // Start Smart Receipt Bot
+  smartReceiptBot.start();
+  logger.info('🧾 Smart Receipt Bot initialized');
   
-  // Start SMS polling for Q&A Bot (backup for webhook)
+  // Start SMS polling for replies
   setupSMSPolling();
 }
 
-/**
- * Start the Smart Receipt Bot with periodic transaction checking
- * DISABLED AUTO-CHECK - only manual checks via dashboard until tracking is fixed
- */
-function startSmartReceiptBot() {
-  try {
-    // Initialize the bot (but don't auto-check)
-    smartReceiptBot.start();
-    
-    // DISABLED: Auto-checking was spamming - only use manual "Check" button for now
-    // TODO: Add proper tracking to avoid re-asking about same transactions
-    /*
-    const FIFTEEN_MINUTES = 15 * 60 * 1000;
-    setInterval(async () => {
-      try {
-        logger.info('🧾 Smart Receipt Bot: Checking for uncategorized transactions...');
-        await smartReceiptBot.checkForNewTransactions();
-      } catch (error) {
-        logger.error('Smart Receipt Bot check failed', { error: error.message });
-      }
-    }, FIFTEEN_MINUTES);
-    */
-    
-    logger.info('🧾 Smart Receipt Bot initialized - use dashboard to manually check transactions');
-    
-  } catch (error) {
-    logger.error('Failed to start Smart Receipt Bot', { error: error.message });
-  }
-}
-
-/**
- * Setup SMS polling for Q&A Bot
- * This polls RingCentral for incoming messages and routes them to the Q&A Bot
- */
 function setupSMSPolling() {
-  // Question patterns to detect Q&A questions
   const questionPatterns = [
     /cash/i, /bank/i, /balance/i, /money/i,
     /ar\b/i, /receivable/i, /owed/i, /owes/i,
     /revenue/i, /billed/i, /invoiced/i,
     /margin/i, /profit/i, /expense/i,
     /runway/i, /wins/i, /summary/i,
-    /this week/i, /last week/i,
-    /\?$/
+    /this week/i, /last week/i, /\?$/
   ];
   
   function isDataQuestion(text) {
@@ -210,82 +127,51 @@ function setupSMSPolling() {
     return questionPatterns.some(p => p.test(text));
   }
   
-  // Register handler for incoming SMS
   ringcentral.onIncomingMessage(async (message) => {
     try {
       const text = message.text || '';
+      logger.info('📱 Received SMS', { from: message.from, text: text.substring(0, 50) });
       
-      logger.info('📱 Received SMS via polling', { 
-        from: message.from, 
-        text: text.substring(0, 50) 
-      });
-      
-      // Check if it's a Q&A question
       if (isDataQuestion(text)) {
         logger.info('Processing Q&A question', { question: text });
-        
-        // Get answer from Q&A Bot
         const result = await dataQABot.processQuestion(text);
-        
-        // Send response back
         await groupSMS.send(result.response);
-        
-        logger.info('Q&A response sent');
       } else {
-        // Not a Q&A question - route to Smart Receipt Bot for job assignment
         logger.info('Routing to Smart Receipt Bot', { text });
         await smartReceiptBot.handleSMSReply(message);
       }
     } catch (error) {
-      logger.error('Error processing polled SMS', { error: error.message });
+      logger.error('Error processing SMS', { error: error.message });
     }
   });
   
-  // Start polling (check every 10 seconds)
   ringcentral.startPolling(10000);
-  
-  logger.info('📱 SMS Q&A polling enabled - text questions to get answers!');
+  logger.info('📱 SMS polling enabled');
 }
 
-// Handle shutdown gracefully
 process.on('SIGINT', async () => {
   logger.info('Shutting down...');
   scheduler.stop();
   bot2.stop();
   smsAlerts.stop();
-  
-  // Cleanup OCR worker if initialized
-  try {
-    const imageParser = require('./parsers/image');
-    await imageParser.terminate();
-  } catch {
-    // Ignore if not initialized
-  }
-  
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   logger.info('Received SIGTERM, shutting down...');
-  scheduler.stop();
-  bot2.stop();
   process.exit(0);
 });
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught exception', { error: error.message, stack: error.stack });
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
   logger.error('Unhandled rejection', { reason });
 });
 
-// Start the application
 start().catch((error) => {
   logger.error('Failed to start', { error: error.message });
   process.exit(1);
 });
-
-
