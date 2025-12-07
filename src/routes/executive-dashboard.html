@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RLT Executive Scorecard</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-card: #1a1a24;
+      --bg-card-hover: #22222e;
+      --border: #2a2a3a;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0b0;
+      --text-muted: #606070;
+      --green: #10b981;
+      --green-bg: rgba(16, 185, 129, 0.1);
+      --green-border: rgba(16, 185, 129, 0.3);
+      --red: #ef4444;
+      --red-bg: rgba(239, 68, 68, 0.1);
+      --red-border: rgba(239, 68, 68, 0.3);
+      --yellow: #f59e0b;
+      --yellow-bg: rgba(245, 158, 11, 0.1);
+      --yellow-border: rgba(245, 158, 11, 0.3);
+      --blue: #3b82f6;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+    .header p { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
+
+    .header-right { display: flex; align-items: center; gap: 16px; }
+
+    .status-badge {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 16px;
+      background: var(--green-bg);
+      border: 1px solid var(--green-border);
+      border-radius: 100px;
+      font-size: 13px;
+      color: var(--green);
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .refresh-btn {
+      padding: 10px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .refresh-btn:hover { background: var(--bg-card-hover); }
+
+    /* Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+    }
+
+    /* Cash Position */
+    .cash-position { grid-column: span 4; }
+
+    .cash-amount {
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+    }
+    .cash-amount.positive { color: var(--green); }
+
+    .cash-label {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    .cash-breakdown {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .cash-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cash-row-label { color: var(--text-secondary); font-size: 14px; }
+    .cash-row-value { font-weight: 600; font-size: 16px; }
+    .cash-row-value.green { color: var(--green); }
+    .cash-row-value.red { color: var(--red); }
+
+    /* Keith's Metrics */
+    .keith-metrics { grid-column: span 8; }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+    }
+
+    .metric-item {
+      text-align: center;
+      padding: 20px 12px;
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .metric-value {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .metric-value.good { color: var(--green); }
+    .metric-value.warning { color: var(--yellow); }
+    .metric-value.bad { color: var(--red); }
+
+    .metric-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+    .metric-target { font-size: 11px; color: var(--text-muted); }
+
+    .metric-status {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+    .metric-status.good { background: var(--green); }
+    .metric-status.warning { background: var(--yellow); }
+    .metric-status.bad { background: var(--red); }
+
+    /* Wins */
+    .wins-section { grid-column: span 5; }
+
+    .wins-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .win-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: var(--green-bg);
+      border: 1px solid var(--green-border);
+      border-radius: 12px;
+    }
+
+    .win-icon {
+      width: 36px; height: 36px;
+      background: var(--green);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .win-text { font-size: 15px; font-weight: 500; }
+    .win-detail { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+    /* Momentum */
+    .momentum-section { grid-column: span 3; }
+
+    .momentum-gauge {
+      position: relative;
+      width: 160px; height: 160px;
+      margin: 0 auto 20px;
+    }
+
+    .momentum-circle {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      background: conic-gradient(
+        var(--green) 0deg calc(var(--momentum, 80) * 3.6deg),
+        var(--bg-secondary) calc(var(--momentum, 80) * 3.6deg) 360deg
+      );
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .momentum-inner {
+      width: 120px; height: 120px;
+      background: var(--bg-card);
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .momentum-value { font-size: 36px; font-weight: 700; color: var(--green); }
+    .momentum-label { font-size: 12px; color: var(--text-secondary); }
+    .momentum-status { text-align: center; font-size: 18px; font-weight: 600; color: var(--green); }
+
+    /* Alerts */
+    .alerts-section { grid-column: span 4; }
+
+    .alerts-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .alert-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 12px;
+    }
+
+    .alert-item.danger {
+      background: var(--red-bg);
+      border: 1px solid var(--red-border);
+    }
+    .alert-item.warning {
+      background: var(--yellow-bg);
+      border: 1px solid var(--yellow-border);
+    }
+
+    .alert-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .alert-item.danger .alert-icon { background: var(--red); }
+    .alert-item.warning .alert-icon { background: var(--yellow); }
+
+    .alert-content { flex: 1; }
+    .alert-title { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+    .alert-item.danger .alert-title { color: var(--red); }
+    .alert-item.warning .alert-title { color: var(--yellow); }
+    .alert-description { font-size: 13px; color: var(--text-secondary); }
+
+    .alert-action {
+      padding: 6px 12px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    /* Forecast */
+    .forecast-section { grid-column: span 8; }
+
+    .forecast-chart {
+      height: 200px;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      padding-top: 20px;
+    }
+
+    .forecast-bar-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .forecast-bar {
+      width: 100%;
+      border-radius: 4px 4px 0 0;
+      min-height: 20px;
+    }
+    .forecast-bar.good { background: var(--green); }
+    .forecast-bar.warning { background: var(--yellow); }
+    .forecast-bar.danger { background: var(--red); }
+
+    .forecast-week { font-size: 11px; color: var(--text-muted); }
+
+    /* Week Stats */
+    .week-stats { grid-column: span 4; }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-row:last-child { border-bottom: none; }
+
+    .stat-label { color: var(--text-secondary); font-size: 14px; }
+    .stat-value { font-size: 18px; font-weight: 600; }
+    .stat-change { font-size: 12px; margin-left: 8px; }
+    .stat-change.up { color: var(--green); }
+    .stat-change.down { color: var(--red); }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+      .dashboard-grid { grid-template-columns: repeat(6, 1fr); }
+      .cash-position, .wins-section, .momentum-section { grid-column: span 3; }
+      .keith-metrics, .alerts-section, .forecast-section, .week-stats { grid-column: span 6; }
+      .metrics-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+
+    @media (max-width: 768px) {
+      .container { padding: 16px; }
+      .dashboard-grid { grid-template-columns: 1fr; }
+      .cash-position, .keith-metrics, .wins-section, .momentum-section, 
+      .alerts-section, .forecast-section, .week-stats { grid-column: span 1; }
+      .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+      .header { flex-direction: column; align-items: flex-start; gap: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div>
+        <h1>⚡ RLT Executive Scorecard</h1>
+        <p id="last-updated">Loading...</p>
+      </div>
+      <div class="header-right">
+        <div class="status-badge">
+          <span class="status-dot"></span>
+          <span>All Systems Online</span>
+        </div>
+        <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+      </div>
+    </header>
+
+    <div class="dashboard-grid">
+      <!-- Cash Position -->
+      <div class="card cash-position">
+        <div class="card-header"><span class="card-title">💰 Cash Position</span></div>
+        <div class="cash-amount positive" id="net-cash">$41,800</div>
+        <div class="cash-label">Net Cash Position</div>
+        <div class="cash-breakdown">
+          <div class="cash-row">
+            <span class="cash-row-label">Bank Balance</span>
+            <span class="cash-row-value" id="bank-balance">$34,200</span>
+          </div>
+          <div class="cash-row">
+            <span class="cash-row-label">Accounts Receivable</span>
+            <span class="cash-row-value green" id="ar-total">+$12,400</span>
+          </div>
+          <div class="cash-row">
+            <span class="cash-row-label">Accounts Payable</span>
+            <span class="cash-row-value red" id="ap-total">-$4,800</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Keith's 5 Numbers -->
+      <div class="card keith-metrics">
+        <div class="card-header">
+          <span class="card-title">📊 Keith's 5 Numbers</span>
+          <span style="font-size: 12px; color: var(--text-muted);">The metrics that matter</span>
+        </div>
+        <div class="metrics-grid" id="keith-metrics">
+          <div class="metric-item">
+            <div class="metric-value good">42%</div>
+            <div class="metric-label">Gross Margin</div>
+            <div class="metric-target"><span class="metric-status good"></span>Target: 40%+</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-value good">1.2</div>
+            <div class="metric-label">Days to Invoice</div>
+            <div class="metric-target"><span class="metric-status good"></span>Target: &lt;3</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-value warning">18</div>
+            <div class="metric-label">Days to Collect</div>
+            <div class="metric-target"><span class="metric-status warning"></span>Target: &lt;14</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-value good">78%</div>
+            <div class="metric-label">Billable Util</div>
+            <div class="metric-target"><span class="metric-status good"></span>Target: 75%+</div>
+          </div>
+          <div class="metric-item">
+            <div class="metric-value good">8+</div>
+            <div class="metric-label">Cash Runway</div>
+            <div class="metric-target"><span class="metric-status good"></span>Target: 6+ wks</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wins This Week -->
+      <div class="card wins-section">
+        <div class="card-header"><span class="card-title">🏆 Wins This Week</span></div>
+        <div class="wins-list" id="wins-list">
+          <div class="win-item">
+            <div class="win-icon">✓</div>
+            <div><div class="win-text">3 Jobs Completed</div><div class="win-detail">Wailea, Smith, Johnson</div></div>
+          </div>
+          <div class="win-item">
+            <div class="win-icon">$</div>
+            <div><div class="win-text">$12,200 Collected</div><div class="win-detail">Fastest: 3 days (Smith)</div></div>
+          </div>
+          <div class="win-item">
+            <div class="win-icon">📈</div>
+            <div><div class="win-text">Revenue Up 17%</div><div class="win-detail">vs. last week</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Momentum -->
+      <div class="card momentum-section">
+        <div class="card-header"><span class="card-title">🔥 Momentum</span></div>
+        <div class="momentum-gauge">
+          <div class="momentum-circle" style="--momentum: 80">
+            <div class="momentum-inner">
+              <div class="momentum-value" id="momentum-value">80</div>
+              <div class="momentum-label">Score</div>
+            </div>
+          </div>
+        </div>
+        <div class="momentum-status" id="momentum-status">STRONG 💪</div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="card alerts-section">
+        <div class="card-header"><span class="card-title">⚠️ Requires Your Attention</span></div>
+        <div class="alerts-list" id="alerts-list">
+          <div class="alert-item danger">
+            <div class="alert-icon">!</div>
+            <div class="alert-content">
+              <div class="alert-title">Invoice 18 Days Overdue</div>
+              <div class="alert-description">Johnson Residence - $4,500</div>
+            </div>
+            <button class="alert-action">Follow Up</button>
+          </div>
+          <div class="alert-item warning">
+            <div class="alert-icon">⏰</div>
+            <div class="alert-content">
+              <div class="alert-title">2 Receipts Need Jobs</div>
+              <div class="alert-description">Check SMS for assignment</div>
+            </div>
+            <button class="alert-action">View</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 13-Week Forecast -->
+      <div class="card forecast-section">
+        <div class="card-header">
+          <span class="card-title">📈 13-Week Cash Forecast</span>
+          <span style="font-size: 12px; color: var(--text-muted);">Projected weekly cash position</span>
+        </div>
+        <div class="forecast-chart" id="forecast-chart"></div>
+      </div>
+
+      <!-- Week Stats -->
+      <div class="card week-stats">
+        <div class="card-header"><span class="card-title">📅 This Week vs Last</span></div>
+        <div class="stat-row">
+          <span class="stat-label">Revenue</span>
+          <span><span class="stat-value">$8,400</span><span class="stat-change up">↑ 17%</span></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Collected</span>
+          <span><span class="stat-value">$12,200</span><span class="stat-change up">↑ 8%</span></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Expenses</span>
+          <span><span class="stat-value">$3,100</span><span class="stat-change down">↓ 12%</span></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Jobs Completed</span>
+          <span><span class="stat-value">3</span><span class="stat-change up">↑ 1</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', loadData);
+
+    async function loadData() {
+      try {
+        const response = await fetch('/executive/api/scorecard');
+        const result = await response.json();
+        if (result.data) updateDashboard(result.data);
+        document.getElementById('last-updated').textContent = 'Last updated: ' + new Date().toLocaleString();
+      } catch (error) {
+        console.error('Failed to load:', error);
+      }
+    }
+
+    function updateDashboard(data) {
+      // Cash Position
+      if (data.cashPosition) {
+        document.getElementById('net-cash').textContent = formatCurrency(data.cashPosition.netCash);
+        document.getElementById('bank-balance').textContent = formatCurrency(data.cashPosition.bankBalance);
+        document.getElementById('ar-total').textContent = '+' + formatCurrency(data.cashPosition.arTotal);
+        document.getElementById('ap-total').textContent = '-' + formatCurrency(data.cashPosition.apTotal);
+      }
+
+      // Forecast
+      if (data.cashForecast) {
+        const container = document.getElementById('forecast-chart');
+        const maxValue = Math.max(...data.cashForecast.map(f => f.projected));
+        container.innerHTML = data.cashForecast.map(f => {
+          const height = Math.max(20, (f.projected / maxValue) * 160);
+          return `
+            <div class="forecast-bar-container">
+              <div class="forecast-bar ${f.status}" style="height: ${height}px"></div>
+              <div class="forecast-week">W${f.week}</div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function formatCurrency(value) {
+      return '$' + (value || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    }
+
+    setInterval(loadData, 5 * 60 * 1000);
+  </script>
+</body>
+</html>
+
