@@ -776,30 +776,33 @@
 
     function updateWeekStats(tony) {
       const thisWeek = tony.thisWeek || {};
+      const rows = document.querySelectorAll('.week-stats .stat-row');
       
-      // Revenue
+      if (rows.length < 4) return;
+      
+      // Revenue (row 0)
       const revChange = tony.revenueChange || 0;
       const revArrow = revChange >= 0 ? '↑' : '↓';
-      document.querySelector('.week-stats .stat-row:nth-child(1) .stat-value').textContent = formatCurrency(thisWeek.revenue);
-      document.querySelector('.week-stats .stat-row:nth-child(1) .stat-change').textContent = `${revArrow} ${Math.abs(revChange).toFixed(0)}%`;
-      document.querySelector('.week-stats .stat-row:nth-child(1) .stat-change').className = `stat-change ${revChange >= 0 ? 'up' : 'down'}`;
+      rows[0].querySelector('.stat-value').textContent = formatCurrency(thisWeek.revenue);
+      rows[0].querySelector('.stat-change').textContent = `${revArrow} ${Math.abs(revChange).toFixed(0)}%`;
+      rows[0].querySelector('.stat-change').className = `stat-change ${revChange >= 0 ? 'up' : 'down'}`;
       
-      // Collected
+      // Collected (row 1)
       const colChange = tony.collectedChange || 0;
       const colArrow = colChange >= 0 ? '↑' : '↓';
-      document.querySelector('.week-stats .stat-row:nth-child(2) .stat-value').textContent = formatCurrency(thisWeek.collected || 0);
-      document.querySelector('.week-stats .stat-row:nth-child(2) .stat-change').textContent = `${colArrow} ${Math.abs(colChange).toFixed(0)}%`;
-      document.querySelector('.week-stats .stat-row:nth-child(2) .stat-change').className = `stat-change ${colChange >= 0 ? 'up' : 'down'}`;
+      rows[1].querySelector('.stat-value').textContent = formatCurrency(thisWeek.collected || 0);
+      rows[1].querySelector('.stat-change').textContent = `${colArrow} ${Math.abs(colChange).toFixed(0)}%`;
+      rows[1].querySelector('.stat-change').className = `stat-change ${colChange >= 0 ? 'up' : 'down'}`;
       
-      // Expenses (lower is better, so flip the colors)
+      // Expenses (row 2) - lower is better, so flip the colors
       const expChange = tony.expenseChange || 0;
       const expArrow = expChange <= 0 ? '↓' : '↑';
-      document.querySelector('.week-stats .stat-row:nth-child(3) .stat-value').textContent = formatCurrency(thisWeek.expenses || 0);
-      document.querySelector('.week-stats .stat-row:nth-child(3) .stat-change').textContent = `${expArrow} ${Math.abs(expChange).toFixed(0)}%`;
-      document.querySelector('.week-stats .stat-row:nth-child(3) .stat-change').className = `stat-change ${expChange <= 0 ? 'up' : 'down'}`;
+      rows[2].querySelector('.stat-value').textContent = formatCurrency(thisWeek.expenses || 0);
+      rows[2].querySelector('.stat-change').textContent = `${expArrow} ${Math.abs(expChange).toFixed(0)}%`;
+      rows[2].querySelector('.stat-change').className = `stat-change ${expChange <= 0 ? 'up' : 'down'}`;
       
-      // Jobs Completed
-      document.querySelector('.week-stats .stat-row:nth-child(4) .stat-value').textContent = thisWeek.jobsCompleted || 0;
+      // Jobs Completed (row 3)
+      rows[3].querySelector('.stat-value').textContent = thisWeek.jobsCompleted || 0;
     }
 
     function updateForecast(forecast) {
