@@ -56,12 +56,15 @@ router.get('/api/scorecard', async (req, res) => {
 async function getQBOData() {
   const companyId = qboClient.getCompanyId();
   
-  // Get date ranges for this week vs last week
+  // Get date ranges
   const now = new Date();
   const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
   const twoWeeksAgo = new Date(now - 14 * 24 * 60 * 60 * 1000);
-  const weekAgoStr = weekAgo.toISOString().split('T')[0];
+  const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+  const ninetyDaysAgo = new Date(now - 90 * 24 * 60 * 60 * 1000);
   const twoWeeksAgoStr = twoWeeksAgo.toISOString().split('T')[0];
+  const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0];
+  const ninetyDaysAgoStr = ninetyDaysAgo.toISOString().split('T')[0];
   
   // Fetch all data in parallel for speed
   const [
@@ -71,15 +74,19 @@ async function getQBOData() {
     openBills,
     recentPayments,
     allInvoices,
-    recentExpenses
+    recentExpenses,
+    last90DaysInvoices,
+    last90DaysExpenses
   ] = await Promise.all([
     queryQBO(companyId, "SELECT * FROM Account WHERE AccountType = 'Bank' AND Active = true"),
     queryQBO(companyId, "SELECT * FROM Account WHERE AccountType = 'Credit Card' AND Active = true"),
     queryQBO(companyId, "SELECT * FROM Invoice WHERE Balance > '0'"),
     queryQBO(companyId, "SELECT * FROM Bill WHERE Balance > '0'"),
-    queryQBO(companyId, "SELECT * FROM Payment ORDER BY TxnDate DESC MAXRESULTS 50"),
+    queryQBO(companyId, "SELECT * FROM Payment ORDER BY TxnDate DESC MAXRESULTS 100"),
     queryQBO(companyId, `SELECT * FROM Invoice WHERE TxnDate >= '${twoWeeksAgoStr}'`),
-    queryQBO(companyId, `SELECT * FROM Purchase WHERE TxnDate >= '${twoWeeksAgoStr}'`)
+    queryQBO(companyId, `SELECT * FROM Purchase WHERE TxnDate >= '${twoWeeksAgoStr}'`),
+    queryQBO(companyId, `SELECT * FROM Invoice WHERE TxnDate >= '${ninetyDaysAgoStr}'`),
+    queryQBO(companyId, `SELECT * FROM Purchase WHERE TxnDate >= '${ninetyDaysAgoStr}'`)
   ]);
   
   // Filter bank accounts - only include Checking and Savings (exclude lines of credit)
@@ -124,8 +131,15 @@ async function getQBOData() {
   // Calculate AR aging
   const arAging = calculateARaging(openInvoices || []);
   
-  // Calculate Keith's metrics
-  const keithMetrics = calculateKeithMetrics(arAging, recentPayments || [], openInvoices || []);
+  // Calculate Keith's metrics with real data
+  const keithMetrics = calculateKeithMetrics({
+    arAging,
+    recentPayments: recentPayments || [],
+    openInvoices: openInvoices || [],
+    last90DaysInvoices: last90DaysInvoices || [],
+    last90DaysExpenses: last90DaysExpenses || [],
+    bankBalance
+  });
   
   // Calculate Tony's momentum with invoices and expenses
   const tonyMetrics = calculateTonyMetrics(allInvoices || [], recentPayments || [], recentExpenses || []);
@@ -216,36 +230,83 @@ function calculateARaging(invoices) {
 /**
  * Calculate Keith Cunningham's 5 Key Metrics
  */
-function calculateKeithMetrics(arAging, payments, invoices) {
-  // Days to collect (average from recent payments)
-  let totalDays = 0, paymentCount = 0;
-  (payments || []).forEach(p => {
-    if (p.TxnDate) {
-      const paid = new Date(p.TxnDate);
-      // Simplified - would need invoice create date
-      totalDays += 14; // Placeholder
-      paymentCount++;
+function calculateKeithMetrics({ arAging, recentPayments, openInvoices, last90DaysInvoices, last90DaysExpenses, bankBalance }) {
+  // 1. GROSS MARGIN - Calculate from last 90 days invoices vs expenses
+  const totalRevenue = (last90DaysInvoices || []).reduce((sum, inv) => sum + (parseFloat(inv.TotalAmt) || 0), 0);
+  const totalExpenses = (last90DaysExpenses || []).reduce((sum, exp) => sum + (parseFloat(exp.TotalAmt) || 0), 0);
+  
+  // Gross margin = (Revenue - Material Costs) / Revenue
+  // For service business, estimate materials at ~30% of expenses (rest is labor overhead)
+  const estimatedMaterialCost = totalExpenses * 0.5; // Adjust based on actual mix
+  const grossMargin = totalRevenue > 0 
+    ? ((totalRevenue - estimatedMaterialCost) / totalRevenue * 100) 
+    : 50;
+  
+  // 2. DAYS TO INVOICE - Calculate average days from invoice create to payment
+  // Using payment data to see how quickly invoices are created after work
+  const daysToInvoice = 1.5; // Would need job completion dates - placeholder for now
+  
+  // 3. DAYS TO COLLECT - Calculate from paid invoices in last 90 days
+  let totalCollectionDays = 0, paidInvoiceCount = 0;
+  (last90DaysInvoices || []).forEach(inv => {
+    const balance = parseFloat(inv.Balance) || 0;
+    if (balance === 0) { // Invoice is paid
+      const created = new Date(inv.MetaData?.CreateTime || inv.TxnDate);
+      const paid = new Date(inv.MetaData?.LastUpdatedTime);
+      const days = Math.max(0, (paid - created) / (1000 * 60 * 60 * 24));
+      if (days < 365) { // Sanity check
+        totalCollectionDays += days;
+        paidInvoiceCount++;
+      }
     }
   });
-  const avgDaysToCollect = paymentCount > 0 ? Math.round(totalDays / paymentCount) : 18;
+  const avgDaysToCollect = paidInvoiceCount > 0 ? Math.round(totalCollectionDays / paidInvoiceCount) : 18;
   
-  // Calculate cash runway (weeks)
-  const weeklyBurn = 3500; // Would calculate from actual expenses
-  const cashRunway = Math.floor(arAging.total / weeklyBurn);
+  // 4. BILLABLE UTILIZATION - Would need time tracking, estimate from revenue vs capacity
+  // Assuming 40 hrs/week @ $150/hr = $6000/week max capacity
+  const weeksIn90Days = 13;
+  const maxCapacity = 6000 * weeksIn90Days; // $78,000 max
+  const billableUtil = Math.min(100, Math.round((totalRevenue / maxCapacity) * 100));
+  
+  // 5. CASH RUNWAY - Bank balance / weekly average expenses
+  const weeklyExpenses = totalExpenses / weeksIn90Days;
+  const cashRunwayWeeks = weeklyExpenses > 0 ? Math.floor(bankBalance / weeklyExpenses) : 8;
+  
+  logger.info('Keith metrics calculated', {
+    totalRevenue,
+    totalExpenses,
+    grossMargin: grossMargin.toFixed(1),
+    avgDaysToCollect,
+    billableUtil,
+    cashRunwayWeeks,
+    weeklyExpenses: weeklyExpenses.toFixed(0)
+  });
   
   return {
-    grossMargin: { value: '42', target: 40, status: 'good' }, // Would need P&L data
-    daysToInvoice: { value: '1.5', target: 3, status: 'good' }, // Would need job data
+    grossMargin: { 
+      value: grossMargin.toFixed(1), 
+      target: 40, 
+      status: grossMargin >= 40 ? 'good' : grossMargin >= 30 ? 'warning' : 'bad' 
+    },
+    daysToInvoice: { 
+      value: daysToInvoice.toString(), 
+      target: 3, 
+      status: daysToInvoice <= 3 ? 'good' : daysToInvoice <= 7 ? 'warning' : 'bad' 
+    },
     daysToCollect: { 
       value: avgDaysToCollect.toString(), 
       target: 14, 
       status: avgDaysToCollect <= 14 ? 'good' : avgDaysToCollect <= 21 ? 'warning' : 'bad' 
     },
-    billableUtil: { value: 75, target: 75, status: 'good' }, // Would need time tracking
+    billableUtil: { 
+      value: billableUtil, 
+      target: 75, 
+      status: billableUtil >= 75 ? 'good' : billableUtil >= 60 ? 'warning' : 'bad' 
+    },
     cashRunway: { 
-      value: cashRunway > 8 ? '8+' : cashRunway.toString(), 
+      value: cashRunwayWeeks > 8 ? '8+' : cashRunwayWeeks.toString(), 
       target: 6, 
-      status: cashRunway >= 6 ? 'good' : cashRunway >= 4 ? 'warning' : 'bad' 
+      status: cashRunwayWeeks >= 6 ? 'good' : cashRunwayWeeks >= 4 ? 'warning' : 'bad' 
     }
   };
 }
