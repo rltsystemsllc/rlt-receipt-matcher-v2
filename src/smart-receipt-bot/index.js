@@ -195,11 +195,15 @@ class SmartReceiptBot {
     // Mark as asked so we don't ask again for 24 hours
     qboMonitor.markAsked(txn.id);
 
+    // Build detailed message with payment info
+    const paymentInfo = txn.accountRef?.name || txn.paymentType || 'Unknown payment';
+    const dateFormatted = new Date(txn.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
     // Send MMS with receipt image
     await groupSMS.sendWithImage(
-      `🧾 ${txn.vendor} $${txn.amount} - ${txn.date}\n` +
-      `No job found on receipt.\n\n` +
-      `Reply with job name or SHOP for stock`,
+      `🧾 ${txn.vendor} $${txn.amount}\n` +
+      `📅 ${dateFormatted} | 💳 ${paymentInfo}\n\n` +
+      `What job? (or SHOP for stock)`,
       receipt.imageData
     );
 
@@ -216,11 +220,16 @@ class SmartReceiptBot {
     // Mark as asked so we don't ask again for 24 hours
     qboMonitor.markAsked(txn.id);
 
+    // Build detailed message with payment info
+    const paymentInfo = txn.accountRef?.name || txn.paymentType || 'Unknown payment';
+    const dateFormatted = new Date(txn.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
     // Send text-only message
     await groupSMS.send(
-      `🧾 ${txn.vendor} $${txn.amount} - ${txn.date}\n` +
-      `No receipt found.\n\n` +
-      `Reply with job name or SHOP for stock`
+      `🧾 ${txn.vendor} $${txn.amount}\n` +
+      `📅 ${dateFormatted} | 💳 ${paymentInfo}\n` +
+      `📎 No receipt found\n\n` +
+      `What job? (or SHOP for stock)`
     );
 
     logger.info('Asked for job (no receipt)', { txnId: txn.id });
