@@ -20,12 +20,14 @@ async function initialize() {
   try {
     // Try to load existing token
     let tokens;
-    if (process.env.SHEETS_TOKEN_JSON) {
+    // Check both possible env var names for compatibility
+    const envVarValue = process.env.SHEETS_TOKENS || process.env.SHEETS_TOKEN_JSON;
+    if (envVarValue) {
       try {
-        tokens = JSON.parse(process.env.SHEETS_TOKEN_JSON);
+        tokens = JSON.parse(envVarValue);
         logger.info('Sheets token loaded from environment variable');
       } catch {
-        logger.warn('Failed to parse SHEETS_TOKEN_JSON env var');
+        logger.warn('Failed to parse sheets token env var');
       }
     }
 
