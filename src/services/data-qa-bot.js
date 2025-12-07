@@ -3,14 +3,107 @@
  * 
  * STRICT RULES:
  * 1. ALL NUMBERS come from real QBO data ONLY
- * 2. NO AI-generated prose or inferences
- * 3. Template-based responses with data inserted
- * 4. Guidance attributed to: Keith Cunningham, Tony Robbins, or Donald Miller
- * 5. "I can only answer with data from QuickBooks" for unknown questions
+ * 2. Template-based responses with data inserted
+ * 3. Guidance attributed to published books (18 mentors)
+ * 4. "I can only answer with data from QuickBooks" for unknown questions
+ * 
+ * INSIGHTS MODE:
+ * - Can synthesize observations from REAL data patterns
+ * - Always labeled as "🔍 INSIGHT:" so you know it's interpretation
+ * - Still based on YOUR numbers, not made up
  */
 
 const qboClient = require('./quickbooks/client');
 const logger = require('../utils/logger');
+
+/**
+ * Generate insights from real data
+ * These are observations/synthesis - clearly labeled
+ */
+function generateInsights(data, type) {
+  const insights = [];
+  
+  switch (type) {
+    case 'cash':
+      if (data.total < 10000) {
+        insights.push("Cash below $10K - consider accelerating collections");
+      }
+      if (data.total > 50000) {
+        insights.push("Strong cash position - opportunity to invest in growth or pay down debt");
+      }
+      break;
+      
+    case 'ar':
+      if (data.total > 20000) {
+        insights.push(`$${formatNum(data.total)} sitting in AR - that's cash waiting to come home`);
+      }
+      const overdueCount = (data.invoices || []).filter(i => {
+        const days = Math.floor((new Date() - new Date(i.DueDate)) / (1000 * 60 * 60 * 24));
+        return days > 30;
+      }).length;
+      if (overdueCount > 0) {
+        insights.push(`${overdueCount} invoice(s) over 30 days - time to pick up the phone`);
+      }
+      break;
+      
+    case 'margin':
+      const margin = parseFloat(data.margin) || 0;
+      if (margin < 30) {
+        insights.push("Margin under 30% - review pricing or reduce direct costs");
+      } else if (margin > 50) {
+        insights.push("Healthy margin above 50% - you're pricing for value, not time");
+      }
+      break;
+      
+    case 'runway':
+      if (data.runwayWeeks < 4) {
+        insights.push("Under 4 weeks runway - this needs immediate attention");
+      } else if (data.runwayWeeks > 12) {
+        insights.push("12+ weeks runway - you have breathing room to be strategic");
+      }
+      break;
+      
+    case 'weekComparison':
+      const change = parseFloat(data.change) || 0;
+      if (change > 20) {
+        insights.push(`Up ${change}% from last week - momentum is building`);
+      } else if (change < -20) {
+        insights.push(`Down ${Math.abs(change)}% from last week - normal fluctuation or something to watch?`);
+      }
+      break;
+      
+    case 'wins':
+      if (data.collected > 5000) {
+        insights.push(`$${formatNum(data.collected)} collected - that's real money in the bank`);
+      }
+      if (data.invoices === 0 && data.payments === 0) {
+        insights.push("Quiet week - sometimes that's a sign to do outreach");
+      }
+      break;
+      
+    case 'creditCards':
+      if (data.total > 10000) {
+        insights.push("Card balances above $10K - watch the interest if not paying in full");
+      }
+      break;
+      
+    case 'summary':
+      const netCash = (data.bankBalance || 0) + (data.arTotal || 0);
+      if (netCash > 50000) {
+        insights.push("Net cash position over $50K - you're in a strong spot");
+      }
+      if (data.arTotal > data.bankBalance) {
+        insights.push("More in AR than in bank - focus on collections this week");
+      }
+      break;
+  }
+  
+  return insights;
+}
+
+function formatNum(value) {
+  return (parseFloat(value) || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
 
 /**
  * Mentor Guidance Library
@@ -408,10 +501,16 @@ async function processQuestion(question) {
     const mentor = MENTOR_GUIDANCE[match.mentor];
     const guidance = mentor.principles[match.principle];
     
+    // Generate insights from real data (clearly labeled)
+    const insights = generateInsights(data.raw, data.type || match.handler.replace('get', '').toLowerCase());
+    const insightText = insights.length > 0 
+      ? `\n\n🔍 INSIGHT (based on your data):\n${insights.map(i => `• ${i}`).join('\n')}`
+      : '';
+    
     // Build response
     return {
       success: true,
-      response: data.response + `\n\n💡 ${mentor.name} (${mentor.source}):\n"${guidance}"`,
+      response: data.response + insightText + `\n\n💡 ${mentor.name} (${mentor.source}):\n"${guidance}"`,
       data: data.raw
     };
   } catch (error) {
@@ -439,7 +538,8 @@ const HANDLERS = {
     
     return {
       response: `💰 Cash Position\n\nTotal: ${formatCurrency(total)}\n\n${breakdown}\n\n(Source: QBO Bank Accounts)`,
-      raw: { total, accounts: filtered }
+      raw: { total, accounts: filtered },
+      type: 'cash'
     };
   },
 
@@ -457,7 +557,8 @@ const HANDLERS = {
     
     return {
       response: `📊 Accounts Receivable\n\nTotal Outstanding: ${formatCurrency(total)}\nOpen Invoices: ${invoices.length}\n\nTop 5:\n${top5}\n\n(Source: QBO Open Invoices)`,
-      raw: { total, count: invoices.length, invoices }
+      raw: { total, count: invoices.length, invoices },
+      type: 'ar'
     };
   },
 
@@ -479,7 +580,8 @@ const HANDLERS = {
     
     return {
       response: `⚠️ Overdue Invoices\n\nTotal Overdue: ${formatCurrency(total)}\nCount: ${overdue.length}\n\n${list || '  None!'}\n\n(Source: QBO Invoices past due date)`,
-      raw: { total, count: overdue.length, invoices: overdue }
+      raw: { total, count: overdue.length, invoices: overdue },
+      type: 'ar'
     };
   },
 
@@ -490,7 +592,8 @@ const HANDLERS = {
     
     return {
       response: `📈 Revenue This Week\n\nInvoices Created: ${invoices.length}\nTotal Billed: ${formatCurrency(total)}\n\n(Source: QBO Invoices, last 7 days)`,
-      raw: { total, count: invoices.length }
+      raw: { total, count: invoices.length },
+      type: 'wins'
     };
   },
 
@@ -507,7 +610,8 @@ const HANDLERS = {
     
     return {
       response: `📅 This Week vs Last\n\nThis Week: ${formatCurrency(thisWeek)} (${thisWeekInv.length} invoices)\nLast Week: ${formatCurrency(lastWeek)} (${lastWeekInv.length} invoices)\nChange: ${change >= 0 ? '+' : ''}${change}%\n\n(Source: QBO Invoices)`,
-      raw: { thisWeek, lastWeek, change }
+      raw: { thisWeek, lastWeek, change },
+      type: 'weekComparison'
     };
   },
 
@@ -518,7 +622,8 @@ const HANDLERS = {
     
     return {
       response: `💵 Collections This Week\n\nPayments Received: ${payments.length}\nTotal Collected: ${formatCurrency(total)}\n\n(Source: QBO Payments, last 7 days)`,
-      raw: { total, count: payments.length }
+      raw: { total, count: payments.length, collected: total },
+      type: 'wins'
     };
   },
 
@@ -546,12 +651,14 @@ const HANDLERS = {
       
       return {
         response: `📊 Gross Margin (YTD)\n\nIncome: ${formatCurrency(income)}\nGross Profit: ${formatCurrency(grossProfit)}\nMargin: ${margin}%\n\n(Source: QBO Profit & Loss Report)`,
-        raw: { income, grossProfit, margin }
+        raw: { income, grossProfit, margin },
+        type: 'margin'
       };
     } catch (e) {
       return {
         response: `📊 Gross Margin\n\nUnable to fetch P&L report.\n\n(Error: ${e.message})`,
-        raw: null
+        raw: null,
+        type: 'margin'
       };
     }
   },
@@ -563,7 +670,8 @@ const HANDLERS = {
     
     return {
       response: `💸 Expenses This Week\n\nTransactions: ${expenses.length}\nTotal Spent: ${formatCurrency(total)}\n\n(Source: QBO Purchases, last 7 days)`,
-      raw: { total, count: expenses.length }
+      raw: { total, count: expenses.length },
+      type: 'expenses'
     };
   },
 
@@ -582,7 +690,8 @@ const HANDLERS = {
     
     return {
       response: `⏱️ Cash Runway\n\nBank Balance: ${formatCurrency(bankBalance)}\nWeekly Expenses (avg): ${formatCurrency(weeklyExpenses)}\nRunway: ${runwayWeeks > 12 ? '12+' : runwayWeeks} weeks\n\n(Source: QBO Bank Accounts + 90-day expense avg)`,
-      raw: { bankBalance, weeklyExpenses, runwayWeeks }
+      raw: { bankBalance, weeklyExpenses, runwayWeeks },
+      type: 'runway'
     };
   },
 
@@ -605,7 +714,8 @@ const HANDLERS = {
     
     return {
       response: `🏆 Wins This Week\n\n${wins.length > 0 ? wins.join('\n') : 'Keep pushing - next week is your week!'}\n\n(Source: QBO Invoices + Payments, last 7 days)`,
-      raw: { invoices: invoices.length, billed, collected, payments: payments.length }
+      raw: { invoices: invoices.length, billed, collected, payments: payments.length },
+      type: 'wins'
     };
   },
 
@@ -619,7 +729,8 @@ const HANDLERS = {
     
     return {
       response: `💳 Credit Cards\n\nTotal Owed: ${formatCurrency(total)}\n\n${list || '  No credit cards found'}\n\n(Source: QBO Credit Card Accounts)`,
-      raw: { total, accounts }
+      raw: { total, accounts },
+      type: 'creditCards'
     };
   },
 
@@ -637,7 +748,8 @@ const HANDLERS = {
     
     return {
       response: `📊 Quick Summary\n\n💰 Bank: ${formatCurrency(bankBalance)}\n📊 AR Outstanding: ${formatCurrency(arTotal)} (${invoices.length} invoices)\n💸 Expenses (7 days): ${formatCurrency(expenseTotal)}\n📈 Net Cash: ${formatCurrency(bankBalance + arTotal)}\n\n(Source: QBO - ${new Date().toLocaleDateString()})`,
-      raw: { bankBalance, arTotal, expenseTotal }
+      raw: { bankBalance, arTotal, expenseTotal },
+      type: 'summary'
     };
   }
 };
