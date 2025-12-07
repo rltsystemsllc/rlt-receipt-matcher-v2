@@ -299,6 +299,115 @@ async function sendToNumber(to, message) {
   return sendSMS(to, message);
 }
 
+/**
+ * Track last processed message ID to avoid duplicates
+ */
+let lastProcessedMessageId = null;
+let messageHandler = null;
+
+/**
+ * Get recent incoming SMS messages
+ */
+async function getIncomingSMS(sinceMinutes = 5) {
+  const plt = await initialize();
+  if (!plt) {
+    return [];
+  }
+
+  try {
+    const response = await plt.get('/restapi/v1.0/account/~/extension/~/message-store', {
+      messageType: 'SMS',
+      direction: 'Inbound',
+      dateFrom: new Date(Date.now() - sinceMinutes * 60 * 1000).toISOString()
+    });
+
+    const data = await response.json();
+    return data.records || [];
+  } catch (error) {
+    logger.error('Failed to get incoming SMS', { error: error.message });
+    return [];
+  }
+}
+
+/**
+ * Poll for new incoming SMS and process them
+ */
+async function pollForMessages() {
+  try {
+    const messages = await getIncomingSMS(2); // Check last 2 minutes
+    
+    for (const msg of messages) {
+      // Skip if already processed
+      if (lastProcessedMessageId && msg.id <= lastProcessedMessageId) {
+        continue;
+      }
+      
+      // Skip if not from Bobby or Jessica
+      const fromNumber = msg.from?.phoneNumber;
+      const bobbyPhone = config.notifications?.bobbyPhone?.replace(/\D/g, '');
+      const jessicaPhone = config.notifications?.jessicaPhone?.replace(/\D/g, '');
+      const normalizedFrom = fromNumber?.replace(/\D/g, '');
+      
+      if (normalizedFrom !== bobbyPhone && normalizedFrom !== jessicaPhone) {
+        continue;
+      }
+      
+      // Extract message text
+      const text = msg.subject || '';
+      
+      if (text && messageHandler) {
+        logger.info('Processing incoming SMS via polling', { 
+          from: fromNumber, 
+          text: text.substring(0, 50) 
+        });
+        
+        // Call the message handler
+        await messageHandler({
+          from: fromNumber,
+          text: text,
+          messageId: msg.id,
+          attachments: msg.attachments || []
+        });
+      }
+      
+      lastProcessedMessageId = msg.id;
+    }
+  } catch (error) {
+    logger.error('SMS polling error', { error: error.message });
+  }
+}
+
+/**
+ * Register a handler for incoming messages
+ */
+function onIncomingMessage(handler) {
+  messageHandler = handler;
+  logger.info('Incoming SMS handler registered');
+}
+
+/**
+ * Start polling for incoming messages
+ */
+let pollingInterval = null;
+
+function startPolling(intervalMs = 10000) {
+  if (pollingInterval) return;
+  
+  logger.info('📱 SMS polling started (checking every 10 seconds)');
+  pollingInterval = setInterval(pollForMessages, intervalMs);
+  
+  // Do an immediate check
+  pollForMessages();
+}
+
+function stopPolling() {
+  if (pollingInterval) {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+    logger.info('SMS polling stopped');
+  }
+}
+
 module.exports = {
   initialize,
   isAuthenticated,
@@ -308,5 +417,10 @@ module.exports = {
   sendInvoiceApproval,
   sendReminder,
   setupWebhook,
-  processIncomingWebhook
+  processIncomingWebhook,
+  getIncomingSMS,
+  pollForMessages,
+  onIncomingMessage,
+  startPolling,
+  stopPolling
 };

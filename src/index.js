@@ -28,6 +28,9 @@ const logger = require('./utils/logger');
 const scheduler = require('./services/scheduler');
 const smsAlerts = require('./services/sms-alerts');
 const bot2 = require('./bot2');
+const ringcentral = require('./bot2/ringcentral');
+const dataQABot = require('./services/data-qa-bot');
+const groupSMS = require('./smart-receipt-bot/group-sms');
 
 // Routes
 const indexRoutes = require('./routes/index');
@@ -147,6 +150,63 @@ async function start() {
   
   // Start SMS Alerts scheduler (Monday scorecard, Friday wins)
   smsAlerts.start();
+  
+  // Start SMS polling for Q&A Bot (backup for webhook)
+  setupSMSPolling();
+}
+
+/**
+ * Setup SMS polling for Q&A Bot
+ * This polls RingCentral for incoming messages and routes them to the Q&A Bot
+ */
+function setupSMSPolling() {
+  // Question patterns to detect Q&A questions
+  const questionPatterns = [
+    /cash/i, /bank/i, /balance/i, /money/i,
+    /ar\b/i, /receivable/i, /owed/i, /owes/i,
+    /revenue/i, /billed/i, /invoiced/i,
+    /margin/i, /profit/i, /expense/i,
+    /runway/i, /wins/i, /summary/i,
+    /this week/i, /last week/i,
+    /\?$/
+  ];
+  
+  function isDataQuestion(text) {
+    if (!text) return false;
+    return questionPatterns.some(p => p.test(text));
+  }
+  
+  // Register handler for incoming SMS
+  ringcentral.onIncomingMessage(async (message) => {
+    try {
+      const text = message.text || '';
+      
+      logger.info('Received SMS via polling', { 
+        from: message.from, 
+        text: text.substring(0, 50) 
+      });
+      
+      // Check if it's a Q&A question
+      if (isDataQuestion(text)) {
+        logger.info('Processing Q&A question', { question: text });
+        
+        // Get answer from Q&A Bot
+        const result = await dataQABot.processQuestion(text);
+        
+        // Send response back
+        await groupSMS.send(result.response);
+        
+        logger.info('Q&A response sent');
+      }
+    } catch (error) {
+      logger.error('Error processing polled SMS', { error: error.message });
+    }
+  });
+  
+  // Start polling (check every 10 seconds)
+  ringcentral.startPolling(10000);
+  
+  logger.info('📱 SMS Q&A polling enabled - text questions to get answers!');
 }
 
 // Handle shutdown gracefully
