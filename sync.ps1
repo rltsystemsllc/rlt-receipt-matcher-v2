@@ -9,7 +9,7 @@ if ($status) {
     Write-Host "`n⚠️  Uncommitted changes found:" -ForegroundColor Yellow
     git status --short
     
-    $confirm = Read-Host "`nPush these changes? (y/n)"
+    $confirm = Read-Host "`nPush these changes? [y/n]"
     if ($confirm -eq 'y') {
         $message = Read-Host "Commit message"
         if (-not $message) { $message = "Update $(Get-Date -Format 'yyyy-MM-dd HH:mm')" }
