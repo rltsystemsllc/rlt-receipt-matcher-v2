@@ -193,8 +193,45 @@ function shouldExcludeTransaction(purchase) {
 }
 
 /**
+ * Accounts that require job assignment
+ * Only ask about transactions categorized to these accounts
+ */
+const JOB_RELATED_ACCOUNTS = [
+  /job supplies/i,
+  /job materials/i,
+  /materials/i,
+  /supplies/i
+];
+
+/**
+ * Check if a transaction is categorized to a job-related account
+ */
+function isJobRelatedAccount(purchase) {
+  // Check the account on each line
+  for (const line of (purchase.Line || [])) {
+    const accountName = line.AccountBasedExpenseLineDetail?.AccountRef?.name || '';
+    for (const pattern of JOB_RELATED_ACCOUNTS) {
+      if (pattern.test(accountName)) {
+        return true;
+      }
+    }
+  }
+  
+  // Also check the main AccountRef
+  const mainAccount = purchase.AccountRef?.name || '';
+  for (const pattern of JOB_RELATED_ACCOUNTS) {
+    if (pattern.test(mainAccount)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
  * Get uncategorized transactions from QBO
  * These are transactions that:
+ * - Are categorized to "Job Supplies" or similar job-related accounts
  * - Don't have a CustomerRef (no job assigned)
  * - Are from 12/1/2025 or newer (don't ask about old transactions)
  */
@@ -220,9 +257,11 @@ async function getUncategorizedTransactions() {
 
     const allPurchases = response.QueryResponse?.Purchase || [];
 
-    // Filter to only uncategorized (no CustomerRef on any line)
-    // Also exclude transactions that don't need receipts
-    // And skip transactions we've already asked about recently
+    // Filter to transactions that need job assignment:
+    // 1. Must be categorized to a job-related account (Job Supplies, etc.)
+    // 2. Must NOT have a CustomerRef (no job assigned yet)
+    // 3. Must not be an excluded vendor (payroll, transfers, etc.)
+    // 4. Must not have been asked about recently (24hr cooldown)
     const uncategorized = allPurchases.filter(purchase => {
       // Skip if we already asked about this recently (24hr cooldown)
       const lastAsked = askedTransactions.get(purchase.Id);
@@ -235,7 +274,13 @@ async function getUncategorizedTransactions() {
         return false;
       }
 
-      // Check if any line has a CustomerRef (already categorized)
+      // ONLY ask about transactions in job-related accounts
+      // If it's categorized to "Office Supplies", "Gas", etc. - skip it
+      if (!isJobRelatedAccount(purchase)) {
+        return false;
+      }
+
+      // Check if any line has a CustomerRef (already has job assigned)
       const hasCustomer = purchase.Line?.some(line => 
         line.AccountBasedExpenseLineDetail?.CustomerRef
       );
