@@ -38,10 +38,11 @@ class SmartReceiptBot {
     // Set up SMS reply handler
     groupSMS.onReply(this.handleSMSReply.bind(this));
 
-    // Initial check
-    await this.checkForNewTransactions();
+    // NO auto-check on startup - wait for manual trigger via dashboard
+    // This prevents spam when server restarts (cache is cleared)
+    // User can click "Check Now" on dashboard when ready
 
-    logger.info('✅ Smart Receipt Bot started');
+    logger.info('✅ Smart Receipt Bot started (manual check mode)');
   }
 
   /**
