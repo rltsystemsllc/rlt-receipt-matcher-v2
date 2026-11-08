@@ -62,8 +62,9 @@ function yes(v) {
 function parseHours(v) {
   const s = String(v ?? '').trim();
   if (!s) return 0;
-  const n = parseFloat(s.replace(/[^0-9.]/g, ''));
-  return isNaN(n) ? NaN : n;
+  // "4", "4.5", "4 hours" ok; ranges like "4-8" are rejected (NaN → guardrail blocks)
+  const m = s.match(/^(\d+(?:\.\d+)?)\s*(h|hr|hrs|hour|hours)?\.?$/i);
+  return m ? parseFloat(m[1]) : NaN;
 }
 
 function colLetter(index) {
@@ -104,7 +105,8 @@ function parseRows(values) {
       hasReceiptPhoto: !!String(get(r, 'receiptPhoto') || '').trim(),
       stockMaterials: clean(get(r, 'stockMaterials')),
       urgent: yes(get(r, 'urgent')),
-      emergency: yes(get(r, 'emergency')),
+      // Form answer is "Same day, weekend, or holiday work @ $300/HR", not "Yes"
+      emergency: yes(get(r, 'emergency')) || /\$300|same day|weekend|holiday/i.test(String(get(r, 'emergency') || '')),
       invoiceNumber: String(get(r, 'invoiceNumber') || '').trim()
     };
   });

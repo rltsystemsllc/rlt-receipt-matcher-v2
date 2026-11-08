@@ -149,3 +149,13 @@ test('text message has total, hours, and reply instructions', () => {
   assert.match(msg, /OK 1042/);
   assert.match(msg, /⚠️ Stock needs price/);
 });
+
+test('real form answers: emergency label and bad hours', () => {
+  const { rows } = sheet.parseRows([HEADERS,
+    row({ Timestamp: 't', 'Hours Worked': '4 hours', 'Emergency Rate?': 'Same day, weekend, or holiday work @ $300/HR' }),
+    row({ Timestamp: 't', 'Hours Worked': '4-8', 'Emergency Rate?': 'No' })]);
+  assert.strictEqual(rows[0].hours, 4);
+  assert.strictEqual(rows[0].emergency, true);
+  assert.ok(isNaN(rows[1].hours));
+  assert.strictEqual(rows[1].emergency, false);
+});
