@@ -4,6 +4,7 @@
  */
 
 const OAuthClient = require('intuit-oauth');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const config = require('../../config');
@@ -48,9 +49,11 @@ class QuickBooksClient {
   getAuthUrl() {
     this.initialize();
     
+    // Random, single-use state value protects the callback against CSRF.
+    this.pendingState = crypto.randomBytes(24).toString('hex');
     return this.oauthClient.authorizeUri({
       scope: [OAuthClient.scopes.Accounting],
-      state: 'rlt-receipt-matcher'
+      state: this.pendingState
     });
   }
 
@@ -59,6 +62,15 @@ class QuickBooksClient {
    */
   async handleCallback(url) {
     this.initialize();
+
+    // Reject callbacks whose state doesn't match the one we issued (CSRF check).
+    let returnedState = null;
+    try { returnedState = new URL(url).searchParams.get('state'); } catch { /* checked below */ }
+    if (!this.pendingState || returnedState !== this.pendingState) {
+      logger.error('QuickBooks OAuth callback rejected: state mismatch');
+      throw new Error('QuickBooks sign-in could not be verified. Start the connection again.');
+    }
+    this.pendingState = null;
 
     try {
       const authResponse = await this.oauthClient.createToken(url);
@@ -190,6 +202,7 @@ class QuickBooksClient {
         // Log full error for debugging
         logger.error('QuickBooks API raw error', {
           status: response.status,
+          intuitTid: response.headers.get('intuit_tid'), // Intuit support uses this to trace a request
           statusText: response.statusText,
           url: url,
           errorText: errorText.substring(0, 500)

@@ -45,7 +45,7 @@ async function get(token, path) {
     headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
   });
   const j = await res.json();
-  if (!res.ok) throw new Error(`QBO ${path} → ${res.status}: ${JSON.stringify(j.Fault || j).slice(0, 300)}`);
+  if (!res.ok) throw new Error(`QBO ${path} → ${res.status} (intuit_tid ${res.headers.get('intuit_tid') || 'n/a'}): ${JSON.stringify(j.Fault || j).slice(0, 300)}`);
   return j;
 }
 
