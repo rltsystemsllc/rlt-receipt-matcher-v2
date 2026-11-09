@@ -25,6 +25,16 @@ function need(name) {
   return v;
 }
 
+// Accepts the key with or without its BEGIN/END lines, with real or "\n" line breaks.
+function privateKey() {
+  let k = need('GOOGLE_SA_PRIVATE_KEY').trim().replace(/^"|"$/g, '').replace(/\\n/g, '\n');
+  if (!/BEGIN PRIVATE KEY/.test(k)) {
+    const body = k.replace(/\s+/g, '');
+    k = `-----BEGIN PRIVATE KEY-----\n${body.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----\n`;
+  }
+  return k;
+}
+
 function colLetter(i) {
   let n = i + 1, s = '';
   while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); }
@@ -42,7 +52,7 @@ async function main() {
 
   const auth = new google.auth.JWT({
     email: need('GOOGLE_SA_CLIENT_EMAIL'),
-    key: need('GOOGLE_SA_PRIVATE_KEY').replace(/\\n/g, '\n'),
+    key: privateKey(),
     scopes: ['https://www.googleapis.com/auth/spreadsheets']
   });
   const sheets = google.sheets({ version: 'v4', auth });
