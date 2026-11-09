@@ -19,6 +19,20 @@ We like his method (Augment session "Build Your AI Sales Employee", Nov 5 2026).
 8. **One morning briefing.** The Chief of Staff agent sums up everything daily. Other agents stay quiet unless something is wrong.
 9. **Don't chase perfect or fancy.** Build what's essential and define done.
 
+### What an agent is here
+
+- **An agent = a Claude conversation connected to one shared folder of plain text.** Every agent reads the same folder, so there's no wiring between agents.
+- **The folder parts:**
+  - owner (who we are, voice)
+  - business (services, customers, rates)
+  - cockpit (where things live, what's in progress)
+  - SOPs (one per job, with "ask me first" steps)
+  - proof (past jobs, references)
+  - tests (what "good enough" means)
+  - this file (read first)
+- **Build order:** pick the job → write the SOP → write the tests → run once by hand while someone watches → run the tests → fix and update the SOP → schedule. A scheduled run reports either "tests passed" or "needs fixing". A person looks, then says go.
+- **How people talk to an agent:** in its own Claude conversation, like talking to an employee. Corrections must end with the agent updating its SOP or tests. The full write-up is in docs/RLT-How-We-Build-Agents.pdf.
+
 ## Hard rules
 
 - **No sending.** Agents never send, remind, void, delete, or create payment links in QuickBooks. Bobby sends invoices himself.
