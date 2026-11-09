@@ -102,13 +102,15 @@ function chargeLines(charge) {
   });
 }
 
-/** What the invoice should total afterwards; tax per QBO rate component, rounded each. */
+/** What the invoice should total afterwards. */
 function expectedTotals(inv, charges) {
   const subtotal = round2(itemLines(inv).reduce((s, l) => s + l.Amount, 0) + charges.reduce((s, c) => s + c.Amount, 0));
   const taxable = round2(itemLines(inv).filter(l => (l.SalesItemLineDetail || l.ReimburseLineDetail)?.TaxCodeRef?.value === 'TAX')
     .reduce((s, l) => s + l.Amount, 0) + charges.reduce((s, c) => s + c.Amount, 0));
   const rates = (inv.TxnTaxDetail?.TaxLine || []).map(t => t.TaxLineDetail?.TaxPercent / 100).filter(Boolean);
-  const tax = round2((rates.length ? rates : [GET_RATE]).reduce((s, r) => s + round2(taxable * r), 0));
+  // QBO rounds once on the combined rate (4.166% + 0.546% = 4.712%), not per rate part (#5015: 298.22, not 298.23).
+  const rate = rates.length ? rates.reduce((s, r) => s + r, 0) : GET_RATE;
+  const tax = round2(taxable * rate);
   return { subtotal, tax, total: round2(subtotal + tax) };
 }
 
