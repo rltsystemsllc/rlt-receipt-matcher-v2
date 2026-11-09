@@ -39,6 +39,7 @@ We like his method (Augment session "Build Your AI Sales Employee", Nov 5 2026).
 - **Sheet write-back waits for Bobby.** "Billed" and the invoice # go back to the job log only after Bobby approves and sends.
 - **Bookkeeper notes are off limits.** Never read the "Notes to Bookkeeper" column or put it on an invoice.
 - **Ask before outward actions.** Emails and anything a customer would see need Jessica's OK first.
+- **Every billing action updates the Billing Desk in the same step.** After any agent creates, changes, or sends-status-checks an invoice, it updates that invoice's doc in the desk `invoices` collection (status, totals, link, summary) and adds an `agentlog` entry. The desk also reads invoice totals live from QuickBooks, but the notes and status are the agent's job. A task isn't done until the desk matches.
 - **Email cleanup is archive-only.** Never permanently delete. Never touch starred, bank, government, tax, or medical mail.
 
 ## Where things live
