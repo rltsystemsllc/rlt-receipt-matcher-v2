@@ -50,6 +50,9 @@ async function main() {
   const sib = await find(sibling);
   if (!sib) throw new Error(`"${sibling}" not found`);
   if (!sib.Job || !sib.ParentRef) throw new Error(`"${sibling}" isn't a project under a customer`);
+  // Rule l20: jobs for existing contractors are QuickBooks PROJECTS. The v3 API can only make
+  // sub-customers (IsProject stays false), which print the job name instead of the contractor.
+  if (sib.IsProject) throw new Error(`"${sibling}" is a QuickBooks Project. The API can't create Projects: ask Jessica to create "${name}" in QuickBooks (Projects → New project), then move the invoice onto it.`);
   if (await find(name)) throw new Error(`A customer named "${name}" already exists. Stopping.`);
 
   const body = {
