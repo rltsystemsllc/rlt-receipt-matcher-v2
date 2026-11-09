@@ -99,16 +99,22 @@ async function getBillableExpenses(customerId, sinceDate, alreadyBilled) {
   return out;
 }
 
-/**
- * Create a DRAFT invoice. EmailStatus NotSet = QBO will not email it.
- */
-async function createDraftInvoice({ customerId, lines, laborItemId, materialsItemId, memo }) {
-  const Line = lines.map((l, i) => {
+// Rule (Jessica, lessons l18): billable receipt charges are TAXABLE (Hawaii GET).
+// Every materials line, and every line of a linked ReimburseCharge (cost line AND
+// markup line), must carry TaxCodeRef "TAX". QuickBooks stores charges as "NON"
+// (e.g. ReimburseCharge 3212), so the agent sets TAX itself and blocks if it's missing.
+const TAXABLE = 'TAX';
+const MATERIAL_KINDS = new Set(['materials', 'materials_pending']);
+
+/** Invoice Line[] for QBO from the agent's priced lines. Pure, so it can be tested. */
+function buildInvoiceLines(lines, { laborItemId, materialsItemId } = {}) {
+  return lines.map((l, i) => {
     const itemId = l.kind === 'labor' ? laborItemId : materialsItemId;
     const detail = { Qty: l.qty, UnitPrice: l.rate };
     if (itemId) detail.ItemRef = { value: itemId };
     const iso = toIsoDate(l.date);
     if (iso) detail.ServiceDate = iso;
+    if (MATERIAL_KINDS.has(l.kind)) detail.TaxCodeRef = { value: TAXABLE };
     return {
       LineNum: i + 1,
       Description: l.description.slice(0, 4000),
@@ -117,6 +123,41 @@ async function createDraftInvoice({ customerId, lines, laborItemId, materialsIte
       SalesItemLineDetail: detail
     };
   });
+}
+
+/** True if this QBO invoice line comes from a billable charge (ReimburseCharge). */
+function isBillableChargeLine(line) {
+  return line.DetailType === 'ReimburseLineDetail' ||
+    (line.LinkedTxn || []).some(t => t.TxnType === 'ReimburseCharge');
+}
+
+/**
+ * Blocks a draft if any billable-charge or materials line isn't taxable.
+ * @param Line      QBO invoice lines
+ * @param agentLines optional agent lines (same order) so materials lines can be identified
+ * @returns list of problems (empty = OK)
+ */
+function untaxedBillableLines(Line, agentLines = []) {
+  const problems = [];
+  Line.forEach((line, i) => {
+    const mustTax = isBillableChargeLine(line) || MATERIAL_KINDS.has(agentLines[i]?.kind);
+    if (!mustTax) return;
+    const detail = line.SalesItemLineDetail || line.ReimburseLineDetail || {};
+    const code = detail.TaxCodeRef?.value;
+    if (code !== TAXABLE) {
+      problems.push(`Line ${line.LineNum ?? i + 1} ("${(line.Description || '').slice(0, 60)}") is ${code || 'missing a tax code'}, must be TAX`);
+    }
+  });
+  return problems;
+}
+
+/**
+ * Create a DRAFT invoice. EmailStatus NotSet = QBO will not email it.
+ */
+async function createDraftInvoice({ customerId, lines, laborItemId, materialsItemId, memo }) {
+  const Line = buildInvoiceLines(lines, { laborItemId, materialsItemId });
+  const untaxed = untaxedBillableLines(Line, lines);
+  if (untaxed.length) throw new Error(`Billing Agent blocked draft: billable charges must be taxable. ${untaxed.join('; ')}`);
 
   const res = await call('POST', '/invoice?minorversion=73', {
     CustomerRef: { value: customerId },
@@ -162,6 +203,9 @@ module.exports = {
   findItemId,
   getBillableExpenses,
   createDraftInvoice,
+  buildInvoiceLines,
+  isBillableChargeLine,
+  untaxedBillableLines,
   getInvoicePdf,
   toIsoDate
 };

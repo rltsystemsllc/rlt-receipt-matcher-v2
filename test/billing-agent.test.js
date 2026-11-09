@@ -159,3 +159,37 @@ test('real form answers: emergency label and bad hours', () => {
   assert.ok(isNaN(rows[1].hours));
   assert.strictEqual(rows[1].emergency, false);
 });
+
+// Rule l18 (Jessica, 2026-11-09): billable receipt charges are taxable. Every line of a
+// linked ReimburseCharge — cost AND markup — must be TaxCodeRef "TAX", never "NON".
+test('billable-charge lines on a draft invoice must be taxable (TAX), never NON', () => {
+  // Shape of real ReimburseCharge 3212 (Josh Stone, Home Depot), which QBO stores as NON.
+  const reimburse = (amount, code) => ({
+    LineNum: 1, Description: 'THE HOME DEPOT KAHULUI HI', Amount: amount,
+    DetailType: 'ReimburseLineDetail',
+    ReimburseLineDetail: { MarkupInfo: { Percent: 22 }, TaxCodeRef: { value: code } },
+    LinkedTxn: [{ TxnId: '3212', TxnType: 'ReimburseCharge' }]
+  });
+  assert.strictEqual(qbo.untaxedBillableLines([reimburse(309.91, 'NON'), reimburse(68.18, 'NON')]).length, 2);
+  assert.strictEqual(qbo.untaxedBillableLines([reimburse(309.91, 'TAX'), reimburse(68.18, 'NON')]).length, 1);
+  assert.deepStrictEqual(qbo.untaxedBillableLines([reimburse(309.91, 'TAX'), reimburse(68.18, 'TAX')]), []);
+
+  // A sales line linked to a ReimburseCharge counts too.
+  const linkedSales = { LineNum: 1, Description: 'x', DetailType: 'SalesItemLineDetail',
+    SalesItemLineDetail: { TaxCodeRef: { value: 'NON' } }, LinkedTxn: [{ TxnId: '3212', TxnType: 'ReimburseCharge' }] };
+  assert.strictEqual(qbo.untaxedBillableLines([linkedSales]).length, 1);
+
+  // Lines the agent builds: materials get TAX, labor is left alone.
+  const agentLines = [
+    { kind: 'labor', date: '11/3/2026', description: 'Electrical labor: x', qty: 1, rate: 600, amount: 600 },
+    { kind: 'materials', date: '10/26/2026', description: 'Materials', qty: 1, rate: 378.09, amount: 378.09 }
+  ];
+  const Line = qbo.buildInvoiceLines(agentLines, { laborItemId: '1', materialsItemId: '2' });
+  assert.strictEqual(Line[1].SalesItemLineDetail.TaxCodeRef.value, 'TAX');
+  assert.strictEqual(Line[0].SalesItemLineDetail.TaxCodeRef, undefined);
+  assert.deepStrictEqual(qbo.untaxedBillableLines(Line, agentLines), []);
+
+  // If a materials line ever loses its tax code, the draft is blocked.
+  delete Line[1].SalesItemLineDetail.TaxCodeRef;
+  assert.strictEqual(qbo.untaxedBillableLines(Line, agentLines).length, 1);
+});
