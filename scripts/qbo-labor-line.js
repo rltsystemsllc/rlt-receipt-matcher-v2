@@ -51,10 +51,11 @@ async function main() {
   const a = process.argv.slice(2), apply = a.includes('--apply');
   const doc = a[0], mode = a[1];
   let lineId = null, amount, desc;
-  if (mode === '--add') [amount, desc] = [Number(a[2]), a[3]];
+  if (mode === '--add' || mode === '--add-materials') [amount, desc] = [Number(a[2]), a[3]];
   else if (mode === '--set') [lineId, amount, desc] = [a[2], Number(a[3]), a[4]];
-  if (!/^\d+$/.test(doc || '') || !['--add', '--set'].includes(mode) || !(amount > 0) || !desc) {
-    throw new Error('Usage: qbo-labor-line.js <invoice #> --add <amount> "<description>" | --set <lineId> <amount> "<description>" [--apply]');
+  else if (mode === '--drop') [lineId, amount, desc] = [a[2], 1, 'drop'];
+  if (!/^\d+$/.test(doc || '') || !['--add', '--add-materials', '--set', '--drop'].includes(mode) || !(amount > 0) || !desc) {
+    throw new Error('Usage: qbo-labor-line.js <invoice #> --add|--add-materials <amount> "<description>" | --set <lineId> <amount> "<description>" | --drop <lineId> [--apply]');
   }
   const t = await token();
   const company = (await call(t, 'GET', `/companyinfo/${need('QBO_REALM_ID')}`)).CompanyInfo?.CompanyName || '';
@@ -64,14 +65,17 @@ async function main() {
   if (['EmailSent'].includes(inv.EmailStatus) || inv.PrintStatus === 'PrintComplete' || (inv.LinkedTxn || []).some(x => x.TxnType === 'Payment')) throw new Error(`#${doc} was sent, printed or paid. Stopping.`);
 
   const original = realLines(inv);
-  const labor = { Amount: amount, Description: desc, DetailType: 'SalesItemLineDetail', SalesItemLineDetail: { ItemRef: { value: '1' }, Qty: 1, UnitPrice: amount, TaxCodeRef: { value: 'TAX' } } };
+  // Services (Id 1) for labor; Materials (Id 1010000001) for items from stock.
+  const itemId = mode === '--add-materials' ? '1010000001' : '1';
+  const labor = { Amount: amount, Description: desc, DetailType: 'SalesItemLineDetail', SalesItemLineDetail: { ItemRef: { value: itemId }, Qty: 1, UnitPrice: amount, TaxCodeRef: { value: 'TAX' } } };
   let lines;
   if (lineId) {
-    if (!original.some(l => l.Id === lineId && l.SalesItemLineDetail)) throw new Error(`Line ${lineId} isn't an item line on #${doc}`);
-    lines = original.map(l => (l.Id === lineId ? { ...labor, Id: lineId } : l));
+    if (!original.some(l => l.Id === lineId && l.SalesItemLineDetail && !(l.LinkedTxn || []).length)) throw new Error(`Line ${lineId} isn't a plain item line on #${doc}`);
+    lines = mode === '--drop' ? original.filter(l => l.Id !== lineId) : original.map(l => (l.Id === lineId ? { ...labor, Id: lineId } : l));
   } else lines = [...original, labor];
 
-  console.log(`${company} · #${doc} · ${inv.CustomerRef.name}\nBefore:\n${show(inv)}\n\nPlan: ${lineId ? `set line ${lineId}` : 'add a line'} → Services $${amount.toFixed(2)}, taxable`);
+  const what = mode === '--drop' ? `take off line ${lineId}` : `${lineId ? `set line ${lineId}` : 'add a line'} → ${itemId === '1' ? 'Services' : 'Materials'} $${amount.toFixed(2)}, taxable`;
+  console.log(`${company} · #${doc} · ${inv.CustomerRef.name}\nBefore:\n${show(inv)}\n\nPlan: ${what}`);
   if (!apply) return console.log('\nDry run. Add --apply to write.');
 
   const fresh = (await call(t, 'GET', `/invoice/${inv.Id}`)).Invoice;
