@@ -14,7 +14,8 @@
     "test:parse": "node src/scripts/test-parser.js",
     "test:qbo": "node src/scripts/test-quickbooks.js",
     "test:ringcentral": "node src/scripts/test-ringcentral.js",
-    "test:sheets": "node src/scripts/test-sheets.js"
+    "test:sheets": "node src/scripts/test-sheets.js",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [
     "quickbooks",
@@ -29,6 +30,7 @@
   "author": "Read Lighting",
   "license": "PRIVATE",
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
     "@ringcentral/sdk": "^5.0.0",
     "cheerio": "^1.0.0-rc.12",
     "dayjs": "^1.11.10",
@@ -41,6 +43,7 @@
     "node-cron": "^3.0.3",
     "openai": "^4.20.0",
     "pdf-parse": "^1.1.1",
+    "pdf-to-png-converter": "^4.3.0",
     "pdfkit": "^0.14.0",
     "tesseract.js": "^5.0.4",
     "uuid": "^9.0.1",

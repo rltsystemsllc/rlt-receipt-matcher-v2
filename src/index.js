@@ -13,6 +13,7 @@ const ringcentral = require('./bot2/ringcentral');
 const dataQABot = require('./services/data-qa-bot');
 const groupSMS = require('./smart-receipt-bot/group-sms');
 const smartReceiptBot = require('./smart-receipt-bot');
+const billingAgent = require('./billing-agent');
 
 // Routes
 const indexRoutes = require('./routes/index');
@@ -25,6 +26,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const executiveRoutes = require('./routes/executive');
 const operationsRoutes = require('./routes/operations');
 const smartReceiptRoutes = require('./routes/smart-receipt');
+const billingAgentRoutes = require('./routes/billing-agent');
 
 const app = express();
 app.use(express.json());
@@ -41,6 +43,7 @@ app.use('/dashboard', dashboardRoutes);
 app.use('/executive', executiveRoutes);
 app.use('/operations', operationsRoutes);
 app.use('/smart-receipt', smartReceiptRoutes);
+app.use('/billing-agent', billingAgentRoutes);
 
 app.use((err, req, res, next) => { logger.error('Error', { error: err.message }); res.status(500).json({ error: 'Server error' }); });
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
@@ -58,12 +61,15 @@ async function start() {
   bot2.start();
   smsAlerts.start();
   smartReceiptBot.start();
+  billingAgent.start();
   
   // SMS polling
   ringcentral.onIncomingMessage(async (msg) => {
     try {
       const text = msg.text || '';
       logger.info('📱 SMS', { from: msg.from, text: text.substring(0, 30) });
+      // "OK 1042" / "FIX 1042 ..." replies to Billing Agent invoice texts
+      if (await billingAgent.handleReply(msg).catch(e => { logger.error('Billing reply error', { error: e.message }); return false; })) return;
       const qaPatterns = [/cash/i, /bank/i, /ar\b/i, /margin/i, /runway/i, /wins/i, /summary/i, /\?$/];
       if (qaPatterns.some(p => p.test(text))) {
         const result = await dataQABot.processQuestion(text);
@@ -77,7 +83,7 @@ async function start() {
   logger.info('🧾 Smart Receipt Bot ready');
 }
 
-process.on('SIGINT', () => { scheduler.stop(); bot2.stop(); smsAlerts.stop(); process.exit(0); });
+process.on('SIGINT', () => { scheduler.stop(); bot2.stop(); billingAgent.stop(); smsAlerts.stop(); process.exit(0); });
 process.on('SIGTERM', () => process.exit(0));
 process.on('uncaughtException', (e) => { logger.error('Uncaught', { error: e.message }); process.exit(1); });
 
